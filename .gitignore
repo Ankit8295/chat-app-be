@@ -1,0 +1,12 @@
+target/
+.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+
+.env
+.env.*
+!.env.example
+
+*.log
+*.class
+.idea/
+.vscode/

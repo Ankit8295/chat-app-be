@@ -1,0 +1,46 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: the-chat-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/the_chat}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+app:
+  auth:
+    cookie:
+      name: ${AUTH_COOKIE_NAME:access_token}
+      secure: ${AUTH_COOKIE_SECURE:false}
+      same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
+      path: ${AUTH_COOKIE_PATH:/}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  jwt:
+    issuer: ${JWT_ISSUER:the-chat-api}
+    secret: ${JWT_SECRET:replace-this-dummy-secret-with-at-least-32-characters}
+    access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT1H}
