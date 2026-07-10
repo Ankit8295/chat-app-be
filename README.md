@@ -23,7 +23,13 @@ docker compose up -d
 Run the app:
 
 ```bash
-mvn spring-boot:run
+./gradlew bootRun
+```
+
+On Windows PowerShell:
+
+```bash
+.\gradlew.bat bootRun
 ```
 
 The default API base URL is `http://localhost:8080`.
