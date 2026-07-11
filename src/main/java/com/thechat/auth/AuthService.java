@@ -11,10 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 import com.thechat.auth.dto.AuthResponse;
 import com.thechat.auth.dto.LoginRequest;
 import com.thechat.auth.dto.RegisterRequest;
-import com.thechat.auth.dto.UserResponse;
 import com.thechat.security.JwtService;
 import com.thechat.user.AppUser;
 import com.thechat.user.UserRepository;
+import com.thechat.user.UserResponse;
 
 @Service
 public class AuthService {

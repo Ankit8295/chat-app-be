@@ -1,18 +1,15 @@
-package com.thechat.auth.dto;
+package com.thechat.user;
 
-import com.thechat.user.AppUser;
 import java.util.UUID;
 
 public record UserResponse(
         UUID id,
         String email,
-        String name
-) {
+        String name) {
     public static UserResponse from(AppUser user) {
         return new UserResponse(
                 user.getId(),
                 user.getEmail(),
-                user.getName()
-        );
+                user.getName());
     }
 }

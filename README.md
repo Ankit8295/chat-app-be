@@ -99,3 +99,5 @@ POST /api/v1/auth/logout
 ```
 
 <!-- Stop-Process  -->
+
+taskkill /IM java.exe /F

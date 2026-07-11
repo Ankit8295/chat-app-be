@@ -6,8 +6,6 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.thechat.auth.dto.UserResponse;
-
 @Service
 public class UserService {
     private final UserRepository userRepository;
