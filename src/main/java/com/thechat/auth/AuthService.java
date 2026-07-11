@@ -1,18 +1,20 @@
 package com.thechat.auth;
 
-import com.thechat.auth.dto.LoginRequest;
-import com.thechat.auth.dto.RegisterRequest;
-import com.thechat.auth.dto.AuthResponse;
-import com.thechat.auth.dto.UserResponse;
-import com.thechat.security.JwtService;
-import com.thechat.user.AppUser;
-import com.thechat.user.UserRepository;
 import java.util.Locale;
+
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.thechat.auth.dto.AuthResponse;
+import com.thechat.auth.dto.LoginRequest;
+import com.thechat.auth.dto.RegisterRequest;
+import com.thechat.auth.dto.UserResponse;
+import com.thechat.security.JwtService;
+import com.thechat.user.AppUser;
+import com.thechat.user.UserRepository;
 
 @Service
 public class AuthService {
@@ -26,8 +28,7 @@ public class AuthService {
             AuthenticationManager authenticationManager,
             JwtService jwtService,
             PasswordEncoder passwordEncoder,
-            UserRepository userRepository
-    ) {
+            UserRepository userRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
@@ -44,8 +45,7 @@ public class AuthService {
         AppUser user = new AppUser(
                 email,
                 request.name().trim(),
-                passwordEncoder.encode(request.password())
-        );
+                passwordEncoder.encode(request.password()));
         AppUser savedUser = userRepository.save(user);
 
         return buildAuthResponse(savedUser);
@@ -55,8 +55,7 @@ public class AuthService {
     public AuthResult login(LoginRequest request) {
         String email = normalizeEmail(request.email());
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(email, request.password())
-        );
+                new UsernamePasswordAuthenticationToken(email, request.password()));
 
         AppUser user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalStateException("Authenticated user was not found"));
@@ -68,8 +67,7 @@ public class AuthService {
         String accessToken = jwtService.createAccessToken(user);
         AuthResponse response = new AuthResponse(
                 jwtService.accessTokenExpiresInSeconds(),
-                UserResponse.from(user)
-        );
+                UserResponse.from(user));
 
         return new AuthResult(accessToken, response);
     }
