@@ -5,9 +5,13 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.thechat.common.dto.PageResponse;
 import com.thechat.friendship.Friendship;
 import com.thechat.friendship.FriendshipRepository;
 import com.thechat.friendship.FriendshipStatus;
@@ -24,8 +28,10 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public List<UserSearchResultResponse> searchUsers(UUID requesterId, String search) {
-        List<AppUser> matchedUsers = userRepository.searchUsersExcludingSelf(requesterId, search);
+    public PageResponse<UserSearchResultResponse> searchUsers(UUID requesterId, String search, int page, int size) {
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "name"));
+        Page<AppUser> matchedUsersPage = userRepository.searchUsersExcludingSelf(requesterId, search, pageable);
+
         List<Friendship> friendships = friendshipRepository.findByUserIdAndStatus(requesterId, FriendshipStatus.ACTIVE);
 
         Map<UUID, String> friendshipStatusMap = friendships.stream()
@@ -34,20 +40,26 @@ public class UserService {
                         f -> f.getStatus().name().toLowerCase()
                 ));
 
-        return matchedUsers.stream()
+        List<UserSearchResultResponse> content = matchedUsersPage.getContent().stream()
                 .map(user -> {
                     String status = friendshipStatusMap.getOrDefault(user.getId(), "none");
                     return UserSearchResultResponse.of(user, status);
                 })
                 .toList();
+
+        return PageResponse.of(content, page, size, matchedUsersPage.getTotalElements());
     }
 
     @Transactional(readOnly = true)
-    public List<FriendResponse> getFriends(UUID requesterId) {
-        List<Friendship> friends = friendshipRepository.findAllFriendsWithUserByUserIdAndStatus(requesterId, FriendshipStatus.ACTIVE);
-        return friends.stream()
+    public PageResponse<FriendResponse> getFriends(UUID requesterId, int page, int size) {
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Friendship> friendsPage = friendshipRepository.findAllFriendsWithUserByUserIdAndStatus(requesterId, FriendshipStatus.ACTIVE, pageable);
+
+        List<FriendResponse> content = friendsPage.getContent().stream()
                 .map(FriendResponse::from)
                 .toList();
+
+        return PageResponse.of(content, page, size, friendsPage.getTotalElements());
     }
 
     @Transactional(readOnly = true)

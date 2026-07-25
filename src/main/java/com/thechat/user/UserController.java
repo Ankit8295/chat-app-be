@@ -1,6 +1,5 @@
 package com.thechat.user;
 
-import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
@@ -12,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.thechat.common.dto.PageResponse;
 import com.thechat.friendship.dto.FriendResponse;
 
 @RestController
@@ -25,20 +25,25 @@ public class UserController {
     }
 
     @GetMapping
-    public ResponseEntity<List<UserSearchResultResponse>> searchUsers(
+    public ResponseEntity<PageResponse<UserSearchResultResponse>> searchUsers(
             @AuthenticationPrincipal Jwt jwt,
             @RequestParam(value = "search", required = false) String search,
-            @RequestParam(value = "q", required = false) String q) {
+            @RequestParam(value = "q", required = false) String q,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size) {
         UUID requesterId = UUID.fromString(jwt.getClaimAsString("userId"));
         String queryTerm = (search != null && !search.isBlank()) ? search : q;
-        List<UserSearchResultResponse> users = userService.searchUsers(requesterId, queryTerm);
+        PageResponse<UserSearchResultResponse> users = userService.searchUsers(requesterId, queryTerm, page, size);
         return ResponseEntity.ok(users);
     }
 
     @GetMapping("/friends")
-    public ResponseEntity<List<FriendResponse>> getFriends(@AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<PageResponse<FriendResponse>> getFriends(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size) {
         UUID requesterId = UUID.fromString(jwt.getClaimAsString("userId"));
-        List<FriendResponse> friends = userService.getFriends(requesterId);
+        PageResponse<FriendResponse> friends = userService.getFriends(requesterId, page, size);
         return ResponseEntity.ok(friends);
     }
 
