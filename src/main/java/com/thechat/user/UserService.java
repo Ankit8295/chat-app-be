@@ -20,11 +20,14 @@ import com.thechat.friendship.dto.FriendResponse;
 @Service
 public class UserService {
     private final UserRepository userRepository;
+    private final UserPreferenceRepository userPreferenceRepository;
     private final FriendshipRepository friendshipRepository;
 
-    public UserService(UserRepository userRepository, FriendshipRepository friendshipRepository) {
+    public UserService(UserRepository userRepository, FriendshipRepository friendshipRepository,
+            UserPreferenceRepository userPreferenceRepository) {
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
+        this.userPreferenceRepository = userPreferenceRepository;
     }
 
     @Transactional(readOnly = true)
@@ -37,8 +40,7 @@ public class UserService {
         Map<UUID, String> friendshipStatusMap = friendships.stream()
                 .collect(Collectors.toMap(
                         f -> f.getFriendUser().getId(),
-                        f -> f.getStatus().name().toLowerCase()
-                ));
+                        f -> f.getStatus().name().toLowerCase()));
 
         List<UserSearchResultResponse> content = matchedUsersPage.getContent().stream()
                 .map(user -> {
@@ -53,7 +55,8 @@ public class UserService {
     @Transactional(readOnly = true)
     public PageResponse<FriendResponse> getFriends(UUID requesterId, int page, int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<Friendship> friendsPage = friendshipRepository.findAllFriendsWithUserByUserIdAndStatus(requesterId, FriendshipStatus.ACTIVE, pageable);
+        Page<Friendship> friendsPage = friendshipRepository.findAllFriendsWithUserByUserIdAndStatus(requesterId,
+                FriendshipStatus.ACTIVE, pageable);
 
         List<FriendResponse> content = friendsPage.getContent().stream()
                 .map(FriendResponse::from)
@@ -67,5 +70,29 @@ public class UserService {
         return userRepository.findById(id)
                 .map(UserResponse::from)
                 .orElseThrow(() -> new UserNotFoundException(id));
+    }
+
+    @Transactional(readOnly = true)
+    public UserPreferenceResponse getUserPreference(UUID id) {
+        return userPreferenceRepository.findById(id)
+                .map(UserPreferenceResponse::from)
+                .orElseGet(() -> new UserPreferenceResponse(id, null));
+    }
+
+    @Transactional
+    public UserPreferenceResponse setUserPreference(UUID userId, UUID lastConversationId) {
+        UserPreference preference = userPreferenceRepository.findById(userId)
+                .map(existing -> {
+                    existing.setLastConversationId(lastConversationId);
+                    return existing;
+                })
+                .orElseGet(() -> {
+                    AppUser user = userRepository.findById(userId)
+                            .orElseThrow(() -> new UserNotFoundException(userId));
+                    UserPreference newPreference = new UserPreference(user, lastConversationId);
+                    return userPreferenceRepository.save(newPreference);
+                });
+
+        return UserPreferenceResponse.from(preference);
     }
 }

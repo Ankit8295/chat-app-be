@@ -7,12 +7,17 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.thechat.common.dto.PageResponse;
 import com.thechat.friendship.dto.FriendResponse;
+import com.thechat.user.dto.CreateUserPreferenceRequest;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -51,6 +56,22 @@ public class UserController {
     public ResponseEntity<UserResponse> getMe(@AuthenticationPrincipal Jwt jwt) {
         UUID requesterId = UUID.fromString(jwt.getClaimAsString("userId"));
         return ResponseEntity.ok(userService.getUserById(requesterId));
+    }
+
+    @GetMapping("/me/preferences")
+    public ResponseEntity<UserPreferenceResponse> getPreference(@AuthenticationPrincipal Jwt jwt) {
+        UUID requesterId = UUID.fromString(jwt.getClaimAsString("userId"));
+        return ResponseEntity.ok(userService.getUserPreference(requesterId));
+    }
+
+    @PostMapping("/me/preferences")
+    public ResponseEntity<UserPreferenceResponse> setUserPreference(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody CreateUserPreferenceRequest request) {
+        UUID requesterId = UUID.fromString(jwt.getClaimAsString("userId"));
+        UUID lastConversationId = request.lastConversationId();
+        UserPreferenceResponse userPreference = userService.setUserPreference(requesterId, lastConversationId);
+        return ResponseEntity.ok(userPreference);
     }
 
     @GetMapping("/{userId}")
