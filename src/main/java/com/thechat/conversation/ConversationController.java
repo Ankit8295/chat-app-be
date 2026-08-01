@@ -51,8 +51,7 @@ public class ConversationController {
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody CreateConversationRequest request) {
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
-        ConversationResponse conversation = conversationService.createDirectConversation(currentUserId,
-                request.userId());
+        ConversationResponse conversation = conversationService.createConversation(currentUserId, request);
         return ResponseEntity.ok(conversation);
     }
 }

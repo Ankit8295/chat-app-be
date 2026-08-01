@@ -31,6 +31,9 @@ public class Conversation {
     private String name;
 
     @Column(columnDefinition = "TEXT")
+    private String about;
+
+    @Column(columnDefinition = "TEXT")
     private String image;
 
     @Column(name = "created_by")
@@ -51,10 +54,17 @@ public class Conversation {
     protected Conversation() {
     }
 
-    public Conversation(ConversationType type, String name, String image, UUID createdBy, String directKey) {
+    public Conversation(
+            ConversationType type,
+            String name,
+            String about,
+            String image,
+            UUID createdBy,
+            String directKey) {
         this.id = UUID.randomUUID();
         this.type = type;
         this.name = name;
+        this.about = about;
         this.image = image;
         this.createdBy = createdBy;
         this.directKey = directKey;
@@ -86,6 +96,14 @@ public class Conversation {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getAbout() {
+        return about;
+    }
+
+    public void setAbout(String about) {
+        this.about = about;
     }
 
     public String getImage() {
