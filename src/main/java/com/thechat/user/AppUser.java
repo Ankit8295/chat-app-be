@@ -26,6 +26,9 @@ public class AppUser {
     @Column(nullable = false)
     private String passwordHash;
 
+    @Column(columnDefinition = "TEXT")
+    private String image;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -68,6 +71,14 @@ public class AppUser {
 
     public String getPasswordHash() {
         return passwordHash;
+    }
+
+    public String getImage() {
+        return image;
+    }
+
+    public void setImage(String image) {
+        this.image = image;
     }
 
     public Instant getCreatedAt() {

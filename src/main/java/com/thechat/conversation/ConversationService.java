@@ -7,6 +7,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.thechat.conversation.dto.ConversationDetailResponse;
 import com.thechat.conversation.dto.ConversationResponse;
 import com.thechat.friendship.Friendship;
 import com.thechat.friendship.FriendshipRepository;
@@ -36,14 +37,30 @@ public class ConversationService {
 
     @Transactional(readOnly = true)
     public List<ConversationResponse> getUserConversations(UUID currentUserId) {
-        List<Conversation> conversations = conversationRepository.findAllByUserIdWithParticipantsAndUsers(currentUserId);
+        List<Conversation> conversations = conversationRepository
+                .findAllByUserIdWithParticipantsAndUsers(currentUserId);
         return conversations.stream()
                 .map(c -> ConversationResponse.from(c, currentUserId))
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public ConversationDetailResponse getUserConversation(UUID conversationId, UUID currentUserId) {
+        Conversation conversation = conversationRepository
+                .findByIdWithParticipantsAndUsers(conversationId)
+                .orElseThrow(() -> new ConversationNotFoundException(conversationId));
+
+        boolean isParticipant = conversation.getParticipants().stream()
+                .anyMatch(p -> p.getUser().getId().equals(currentUserId));
+        if (!isParticipant) {
+            throw new ConversationNotFoundException(conversationId);
+        }
+
+        return ConversationDetailResponse.from(conversation, currentUserId);
+    }
+
     @Transactional
-    public ConversationResponse getOrCreateDirectConversation(UUID currentUserId, UUID targetUserId) {
+    public ConversationResponse createDirectConversation(UUID currentUserId, UUID targetUserId) {
         if (currentUserId.equals(targetUserId)) {
             throw new IllegalArgumentException("Cannot create a conversation with yourself");
         }
@@ -64,8 +81,7 @@ public class ConversationService {
                         null,
                         null,
                         currentUserId,
-                        directKey
-                );
+                        directKey);
 
                 ConversationParticipant p1 = new ConversationParticipant(newConversation, currentUser);
                 ConversationParticipant p2 = new ConversationParticipant(newConversation, targetUser);
@@ -81,6 +97,10 @@ public class ConversationService {
         }
 
         ensureBidirectionalFriendship(currentUser, targetUser);
+
+        conversation = conversationRepository
+                .findByIdWithParticipantsAndUsers(conversation.getId())
+                .orElse(conversation);
 
         return ConversationResponse.from(conversation, currentUserId);
     }

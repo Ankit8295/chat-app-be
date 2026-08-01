@@ -19,7 +19,7 @@ public record FriendResponse(
             friendship.getFriendUser().getId(),
             friendship.getFriendUser().getName(),
             friendship.getFriendUser().getEmail(),
-            null, // future profile image
+            friendship.getFriendUser().getImage(),
             friendship.getStatus().name().toLowerCase(),
             friendship.getCreatedAt(),
             friendship.getUpdatedAt()

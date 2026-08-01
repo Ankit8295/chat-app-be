@@ -14,7 +14,7 @@ public record UserSearchResultResponse(
             user.getId(),
             user.getEmail(),
             user.getName(),
-            null,
+            user.getImage(),
             friendshipStatus
         );
     }

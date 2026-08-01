@@ -7,11 +7,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.thechat.conversation.dto.ConversationDetailResponse;
 import com.thechat.conversation.dto.ConversationResponse;
 import com.thechat.conversation.dto.CreateConversationRequest;
 
@@ -34,12 +36,23 @@ public class ConversationController {
         return ResponseEntity.ok(conversations);
     }
 
+    @GetMapping("/{conversationId}")
+    public ResponseEntity<ConversationDetailResponse> getConversation(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID conversationId) {
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+        ConversationDetailResponse conversation = conversationService.getUserConversation(conversationId,
+                currentUserId);
+        return ResponseEntity.ok(conversation);
+    }
+
     @PostMapping
     public ResponseEntity<ConversationResponse> createConversation(
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody CreateConversationRequest request) {
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
-        ConversationResponse conversation = conversationService.getOrCreateDirectConversation(currentUserId, request.userId());
+        ConversationResponse conversation = conversationService.createDirectConversation(currentUserId,
+                request.userId());
         return ResponseEntity.ok(conversation);
     }
 }

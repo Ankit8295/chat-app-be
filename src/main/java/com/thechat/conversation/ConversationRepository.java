@@ -13,9 +13,15 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     Optional<Conversation> findByDirectKey(String directKey);
 
     @Query("SELECT DISTINCT c FROM Conversation c " +
-           "JOIN FETCH c.participants p " +
-           "JOIN FETCH p.user u " +
-           "WHERE c.id IN (SELECT cp.conversation.id FROM ConversationParticipant cp WHERE cp.user.id = :userId) " +
-           "ORDER BY c.updatedAt DESC")
+            "JOIN FETCH c.participants p " +
+            "JOIN FETCH p.user u " +
+            "WHERE c.id = :conversationId")
+    Optional<Conversation> findByIdWithParticipantsAndUsers(@Param("conversationId") UUID conversationId);
+
+    @Query("SELECT DISTINCT c FROM Conversation c " +
+            "JOIN FETCH c.participants p " +
+            "JOIN FETCH p.user u " +
+            "WHERE c.id IN (SELECT cp.conversation.id FROM ConversationParticipant cp WHERE cp.user.id = :userId) " +
+            "ORDER BY c.updatedAt DESC")
     List<Conversation> findAllByUserIdWithParticipantsAndUsers(@Param("userId") UUID userId);
 }
