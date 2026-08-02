@@ -12,6 +12,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.thechat.AppProperties;
 import com.thechat.conversation.Conversation;
 import com.thechat.conversation.ConversationNotFoundException;
 import com.thechat.conversation.ConversationParticipantRepository;
@@ -44,6 +45,7 @@ public class MessageService {
     private final WsConnectionRegistry connectionRegistry;
     private final MessagePersistenceService messagePersistenceService;
     private final JsonMapper jsonMapper;
+    private final String instanceId;
 
     public MessageService(
             MessageRepository messageRepository,
@@ -52,7 +54,8 @@ public class MessageService {
             UserRepository userRepository,
             WsConnectionRegistry connectionRegistry,
             MessagePersistenceService messagePersistenceService,
-            JsonMapper jsonMapper) {
+            JsonMapper jsonMapper,
+            AppProperties appProperties) {
         this.messageRepository = messageRepository;
         this.conversationParticipantRepository = conversationParticipantRepository;
         this.conversationRepository = conversationRepository;
@@ -60,6 +63,7 @@ public class MessageService {
         this.connectionRegistry = connectionRegistry;
         this.messagePersistenceService = messagePersistenceService;
         this.jsonMapper = jsonMapper;
+        this.instanceId = appProperties.id();
     }
 
     @Transactional(readOnly = true)
@@ -148,6 +152,8 @@ public class MessageService {
         MessageResponse response = MessageResponse.from(message);
 
         List<UUID> participantIds = conversationParticipantRepository.findUserIdsByConversationId(conversationId);
+        log.info("[instance-{}] Broadcasting message {} from user {} to {} participants in conversation {}",
+                instanceId, response.id(), senderId, participantIds.size(), conversationId);
         try {
             String json = jsonMapper.writeValueAsString(
                     new WsEnvelope(WsEventTypes.MESSAGE_NEW, jsonMapper.valueToTree(response)));

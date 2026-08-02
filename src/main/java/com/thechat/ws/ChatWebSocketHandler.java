@@ -11,6 +11,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import com.thechat.AppProperties;
 import com.thechat.conversation.ConversationNotFoundException;
 import com.thechat.message.MessageService;
 import com.thechat.ws.dto.SendMessagePayload;
@@ -30,20 +31,24 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final JsonMapper jsonMapper;
     private final WsConnectionRegistry connectionRegistry;
     private final MessageService messageService;
+    private final String instanceId;
 
     public ChatWebSocketHandler(
             JsonMapper jsonMapper,
             WsConnectionRegistry connectionRegistry,
-            MessageService messageService) {
+            MessageService messageService,
+            AppProperties appProperties) {
         this.jsonMapper = jsonMapper;
         this.connectionRegistry = connectionRegistry;
         this.messageService = messageService;
+        this.instanceId = appProperties.id();
     }
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         UUID userId = requireUserId(session);
         connectionRegistry.register(userId, session);
+        log.info("[instance-{}] WebSocket connected: userId={}, sessionId={}", instanceId, userId, session.getId());
         sendEvent(session, WsEventTypes.READY, new WsReadyPayload(userId));
     }
 
@@ -75,6 +80,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         UUID userId = (UUID) session.getAttributes().get(JwtHandshakeInterceptor.USER_ID_ATTR);
         if (userId != null) {
             connectionRegistry.unregister(userId, session);
+            log.info("[instance-{}] WebSocket disconnected: userId={}, sessionId={}", instanceId, userId, session.getId());
         }
     }
 

@@ -32,6 +32,8 @@ management:
         enabled: true
 
 app:
+  instance:
+    id: ${INSTANCE_ID:local}
   auth:
     cookie:
       name: ${AUTH_COOKIE_NAME:access_token}
