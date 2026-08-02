@@ -130,6 +130,10 @@ public class Conversation {
         return updatedAt;
     }
 
+    public void touch() {
+        this.updatedAt = Instant.now();
+    }
+
     public List<ConversationParticipant> getParticipants() {
         return participants;
     }

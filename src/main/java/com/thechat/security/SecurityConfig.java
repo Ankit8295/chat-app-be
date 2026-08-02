@@ -50,6 +50,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/logout")
                         .permitAll()
                         .requestMatchers("/health", "/actuator/health/**").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .bearerTokenResolver(cookieBearerTokenResolver)
