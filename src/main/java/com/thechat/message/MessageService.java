@@ -20,14 +20,10 @@ import com.thechat.conversation.ConversationRepository;
 import com.thechat.message.dto.MessageCursor;
 import com.thechat.message.dto.MessagePageResponse;
 import com.thechat.message.dto.MessageResponse;
+import com.thechat.realtime.RealtimePublisher;
 import com.thechat.user.AppUser;
 import com.thechat.user.UserNotFoundException;
 import com.thechat.user.UserRepository;
-import com.thechat.ws.WsConnectionRegistry;
-import com.thechat.ws.WsEventTypes;
-import com.thechat.ws.dto.WsEnvelope;
-
-import tools.jackson.databind.json.JsonMapper;
 
 @Service
 public class MessageService {
@@ -42,9 +38,8 @@ public class MessageService {
     private final ConversationParticipantRepository conversationParticipantRepository;
     private final ConversationRepository conversationRepository;
     private final UserRepository userRepository;
-    private final WsConnectionRegistry connectionRegistry;
+    private final RealtimePublisher realtimePublisher;
     private final MessagePersistenceService messagePersistenceService;
-    private final JsonMapper jsonMapper;
     private final String instanceId;
 
     public MessageService(
@@ -52,17 +47,15 @@ public class MessageService {
             ConversationParticipantRepository conversationParticipantRepository,
             ConversationRepository conversationRepository,
             UserRepository userRepository,
-            WsConnectionRegistry connectionRegistry,
+            RealtimePublisher realtimePublisher,
             MessagePersistenceService messagePersistenceService,
-            JsonMapper jsonMapper,
             AppProperties appProperties) {
         this.messageRepository = messageRepository;
         this.conversationParticipantRepository = conversationParticipantRepository;
         this.conversationRepository = conversationRepository;
         this.userRepository = userRepository;
-        this.connectionRegistry = connectionRegistry;
+        this.realtimePublisher = realtimePublisher;
         this.messagePersistenceService = messagePersistenceService;
-        this.jsonMapper = jsonMapper;
         this.instanceId = appProperties.id();
     }
 
@@ -155,9 +148,7 @@ public class MessageService {
         log.info("[instance-{}] Broadcasting message {} from user {} to {} participants in conversation {}",
                 instanceId, response.id(), senderId, participantIds.size(), conversationId);
         try {
-            String json = jsonMapper.writeValueAsString(
-                    new WsEnvelope(WsEventTypes.MESSAGE_NEW, jsonMapper.valueToTree(response)));
-            connectionRegistry.sendToUsers(participantIds, json);
+            realtimePublisher.publishMessageNew(participantIds, response);
         } catch (Exception ex) {
             log.error("Failed to broadcast message {} to conversation {}", response.id(), conversationId, ex);
             throw new IllegalStateException("Failed to broadcast message", ex);

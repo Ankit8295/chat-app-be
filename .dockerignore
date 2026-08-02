@@ -1,5 +1,7 @@
 .gradle/
 build/
+!build/libs/
+!build/libs/the-chat-backend-0.0.1-SNAPSHOT.jar
 .git
 .gitignore
 .env

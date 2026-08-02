@@ -14,23 +14,11 @@ src/main/java/com/thechat
 
 ## Local Setup
 
-Start PostgreSQL:
-
-```bash
-docker compose up -d
-```
-
 Run the app:
 
-```bash
-./gradlew bootRun
-```
+.\gradlew.bat bootJar -x test
 
-On Windows PowerShell:
-
-```bash
-.\gradlew.bat bootRun
-```
+docker compose up --build
 
 The default API base URL is `http://localhost:8080`.
 

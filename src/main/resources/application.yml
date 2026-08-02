@@ -8,6 +8,10 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/the_chat}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -34,6 +38,8 @@ management:
 app:
   instance:
     id: ${INSTANCE_ID:local}
+  realtime:
+    channel: ${REALTIME_CHANNEL:chat:realtime}
   auth:
     cookie:
       name: ${AUTH_COOKIE_NAME:access_token}

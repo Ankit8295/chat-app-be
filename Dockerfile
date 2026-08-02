@@ -1,21 +1,13 @@
-# Stage 1: Build the fat JAR
-FROM eclipse-temurin:21-jdk AS builder
-
-WORKDIR /app
-
-COPY gradle/ gradle/
-COPY gradlew settings.gradle build.gradle gradle.properties ./
-RUN chmod +x gradlew && ./gradlew dependencies --no-daemon || true
-
-COPY src/ src/
-RUN ./gradlew bootJar --no-daemon -x test
-
-# Stage 2: Lightweight runtime image
+# Runtime image only — JAR is built on the host so Docker does not need
+# to download Gradle (avoids services.gradle.org network failures).
+#
+# Build first:  .\gradlew.bat bootJar -x test
+# Then:         docker compose up --build
 FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-COPY --from=builder /app/build/libs/*.jar app.jar
+COPY build/libs/the-chat-backend-0.0.1-SNAPSHOT.jar app.jar
 
 EXPOSE 8080
 
