@@ -49,18 +49,6 @@ public class RealtimePublisher {
         publish(WsEventTypes.MESSAGE_DELETED, targetUserIds, payload);
     }
 
-    public void publishMemberAdded(List<UUID> targetUserIds, JsonNode payload) {
-        publish(WsEventTypes.MEMBER_ADDED, targetUserIds, payload);
-    }
-
-    public void publishMemberRemoved(List<UUID> targetUserIds, JsonNode payload) {
-        publish(WsEventTypes.MEMBER_REMOVED, targetUserIds, payload);
-    }
-
-    public void publishGroupUpdated(List<UUID> targetUserIds, JsonNode payload) {
-        publish(WsEventTypes.GROUP_UPDATED, targetUserIds, payload);
-    }
-
     private void publish(String type, List<UUID> targetUserIds, JsonNode payload) {
         WsEnvelope envelope = new WsEnvelope(type, payload);
         RealtimeEvent event = new RealtimeEvent(

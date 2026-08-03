@@ -52,10 +52,7 @@ public class RealtimeSubscriber implements MessageListener {
                         WsEventTypes.MESSAGE_UPDATED,
                         WsEventTypes.MESSAGE_DELETED ->
                     sendMessageEvent(event);
-                case WsEventTypes.MEMBER_ADDED,
-                        WsEventTypes.MEMBER_REMOVED,
-                        WsEventTypes.GROUP_UPDATED ->
-                    sendGroupEvent(event);
+
                 default -> log.warn(
                         "[instance-{}] Unknown realtime type={} eventId={}",
                         instanceId,
@@ -71,17 +68,6 @@ public class RealtimeSubscriber implements MessageListener {
         deliverToLocalUsers(event);
         log.info(
                 "[instance-{}] Message event delivered type={} eventId={} fromOrigin={} targetCount={}",
-                instanceId,
-                event.type(),
-                event.eventId(),
-                event.originInstanceId(),
-                event.targetUserIds().size());
-    }
-
-    private void sendGroupEvent(RealtimeEvent event) {
-        deliverToLocalUsers(event);
-        log.info(
-                "[instance-{}] Group event delivered type={} eventId={} fromOrigin={} targetCount={}",
                 instanceId,
                 event.type(),
                 event.eventId(),
