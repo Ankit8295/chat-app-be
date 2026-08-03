@@ -21,16 +21,19 @@ public class AuthService {
 
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
 
     public AuthService(
             AuthenticationManager authenticationManager,
             JwtService jwtService,
+            RefreshTokenService refreshTokenService,
             PasswordEncoder passwordEncoder,
             UserRepository userRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
+        this.refreshTokenService = refreshTokenService;
         this.passwordEncoder = passwordEncoder;
         this.userRepository = userRepository;
     }
@@ -48,7 +51,7 @@ public class AuthService {
                 passwordEncoder.encode(request.password()));
         AppUser savedUser = userRepository.save(user);
 
-        return buildAuthResponse(savedUser);
+        return buildAuthResponse(savedUser, null);
     }
 
     @Transactional(readOnly = true)
@@ -60,16 +63,26 @@ public class AuthService {
         AppUser user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalStateException("Authenticated user was not found"));
 
-        return buildAuthResponse(user);
+        return buildAuthResponse(user, null);
     }
 
-    private AuthResult buildAuthResponse(AppUser user) {
+    @Transactional(readOnly = true)
+    public AuthResult refresh(String rawRefreshToken) {
+        return refreshTokenService.rotate(rawRefreshToken);
+    }
+
+    public void logout(String rawRefreshToken) {
+        refreshTokenService.revoke(rawRefreshToken);
+    }
+
+    private AuthResult buildAuthResponse(AppUser user, String deviceId) {
         String accessToken = jwtService.createAccessToken(user);
+        String refreshToken = refreshTokenService.issue(user.getId(), deviceId);
         AuthResponse response = new AuthResponse(
                 jwtService.accessTokenExpiresInSeconds(),
                 UserResponse.from(user));
 
-        return new AuthResult(accessToken, response);
+        return new AuthResult(accessToken, refreshToken, response);
     }
 
     private String normalizeEmail(String email) {

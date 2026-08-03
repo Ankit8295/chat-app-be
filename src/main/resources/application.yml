@@ -43,6 +43,7 @@ app:
   auth:
     cookie:
       name: ${AUTH_COOKIE_NAME:access_token}
+      refresh-name: ${AUTH_REFRESH_COOKIE_NAME:refresh_token}
       secure: ${AUTH_COOKIE_SECURE:false}
       same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
       path: ${AUTH_COOKIE_PATH:/}
@@ -51,4 +52,5 @@ app:
   jwt:
     issuer: ${JWT_ISSUER:the-chat-api}
     secret: ${JWT_SECRET:replace-this-dummy-secret-with-at-least-32-characters}
-    access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT1H}
+    access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
+    refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:P30D}

@@ -5,6 +5,9 @@ import java.time.Duration;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+
 @Service
 public class AuthCookieService {
 
@@ -17,19 +20,48 @@ public class AuthCookieService {
     }
 
     public ResponseCookie createAccessTokenCookie(String accessToken) {
-        return baseCookie(accessToken)
+        return baseCookie(authCookieProperties.name(), accessToken)
                 .maxAge(jwtProperties.accessTokenTtl())
                 .build();
     }
 
+    public ResponseCookie createRefreshTokenCookie(String refreshToken) {
+        return baseCookie(authCookieProperties.refreshName(), refreshToken)
+                .maxAge(jwtProperties.refreshTokenTtl())
+                .build();
+    }
+
     public ResponseCookie clearAccessTokenCookie() {
-        return baseCookie("")
+        return baseCookie(authCookieProperties.name(), "")
                 .maxAge(Duration.ZERO)
                 .build();
     }
 
-    private ResponseCookie.ResponseCookieBuilder baseCookie(String value) {
-        return ResponseCookie.from(authCookieProperties.name(), value)
+    public ResponseCookie clearRefreshTokenCookie() {
+        return baseCookie(authCookieProperties.refreshName(), "")
+                .maxAge(Duration.ZERO)
+                .build();
+    }
+
+    public String readRefreshToken(HttpServletRequest request) {
+        return readCookie(request, authCookieProperties.refreshName());
+    }
+
+    public String readCookie(HttpServletRequest request, String name) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+        for (Cookie cookie : cookies) {
+            if (name.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
+    }
+
+    private ResponseCookie.ResponseCookieBuilder baseCookie(String name, String value) {
+        return ResponseCookie.from(name, value)
                 .httpOnly(true)
                 .secure(authCookieProperties.secure())
                 .sameSite(authCookieProperties.sameSite())

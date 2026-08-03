@@ -1,6 +1,7 @@
 package com.thechat.common.error;
 
 import com.thechat.auth.EmailAlreadyExistsException;
+import com.thechat.auth.InvalidRefreshTokenException;
 import com.thechat.conversation.ConversationNotFoundException;
 import com.thechat.user.UserNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -95,6 +96,17 @@ public class GlobalExceptionHandler {
                 status.value(),
                 status.getReasonPhrase(),
                 exception.getMessage(),
+                request.getRequestURI()
+        ));
+    }
+
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    ResponseEntity<ApiError> handleInvalidRefreshToken(HttpServletRequest request) {
+        HttpStatus status = HttpStatus.UNAUTHORIZED;
+        return ResponseEntity.status(status).body(ApiError.of(
+                status.value(),
+                status.getReasonPhrase(),
+                "Invalid or expired refresh token",
                 request.getRequestURI()
         ));
     }

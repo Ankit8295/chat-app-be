@@ -47,7 +47,7 @@ services:
       AUTH_COOKIE_PATH: /
       JWT_ISSUER: the-chat-api
       JWT_SECRET: replace-this-dummy-secret-with-at-least-32-characters
-      JWT_ACCESS_TOKEN_TTL: PT1H
+      JWT_ACCESS_TOKEN_TTL: PT15M
       SPRING_FLYWAY_ENABLED: "true"
     depends_on:
       postgres:
@@ -77,7 +77,7 @@ services:
       AUTH_COOKIE_PATH: /
       JWT_ISSUER: the-chat-api
       JWT_SECRET: replace-this-dummy-secret-with-at-least-32-characters
-      JWT_ACCESS_TOKEN_TTL: PT1H
+      JWT_ACCESS_TOKEN_TTL: PT15M
       SPRING_FLYWAY_ENABLED: "false"
     depends_on:
       postgres:
