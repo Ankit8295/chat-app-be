@@ -1,7 +1,4 @@
 .gradle/
-build/
-!build/libs/
-!build/libs/the-chat-backend-0.0.1-SNAPSHOT.jar
 .git
 .gitignore
 .env
@@ -9,3 +6,9 @@ build/
 *.md
 .idea/
 *.iml
+docs/
+
+# Ignore Gradle outputs except the bootJars Docker COPY needs
+**/build/
+!**/build/libs/
+!**/build/libs/*.jar

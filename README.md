@@ -1,44 +1,58 @@
 # The Chat Backend
 
-Spring Boot backend for The Chat, using Java 21, PostgreSQL, Spring Security, JWT, JPA, Flyway, and validation.
+Gradle multi-project monorepo for Auth, User, and Chat microservices — Java 21, Spring Boot 4, PostgreSQL (DB per service), Redis, JWT, Flyway.
 
 ## Structure
 
 ```text
-src/main/java/com/thechat
-  auth/       Auth controller, service, DTOs, auth-specific exceptions
-  common/     Shared API error handling
-  security/   Stateless JWT security and typed app properties
-  user/       User entity and repository
+chat-app-be/
+├── services/          # Independently deployable Spring Boot apps
+│   ├── auth/          # Credentials, JWT issuance, refresh sessions
+│   ├── user/          # Profiles, friends, preferences + /internal/**
+│   └── chat/          # Conversations, messages, WebSocket + Redis fan-out
+├── libs/
+│   └── common/        # Shared library (NOT deployed) — JWT/service-auth, ApiError, etc.
+├── infra/
+│   ├── docker/        # Per-service Dockerfiles
+│   ├── nginx/         # API gateway routes
+│   └── compose.yml    # Local orchestration
+├── docs/architecture/
+├── settings.gradle    # Project includes + projectDir remaps
+├── build.gradle       # Shared Java 21 / Spring BOM / version for all modules
+└── gradlew.bat
 ```
+
+`libs/common` is compiled **into** each service JAR at build time. It has no container of its own.
+
+Gradle project names stay `:auth`, `:user`, `:chat`, `:common` (see `settings.gradle`), so commands did not change after the folder move.
 
 ## Local Setup
 
-Run the app:
+Build fat JARs, then start everything via Compose:
 
-.\gradlew.bat bootJar -x test
+```powershell
+.\gradlew.bat :auth:bootJar :user:bootJar :chat:bootJar -x test
+docker compose -f infra/compose.yml up --build
+```
 
-docker compose up --build
+Or run a single service with Gradle (DBs/Redis must already be up):
 
-The default API base URL is `http://localhost:8080`.
+```powershell
+.\gradlew.bat :auth:bootRun
+.\gradlew.bat :user:bootRun
+.\gradlew.bat :chat:bootRun
+```
+
+API gateway: `http://localhost:8080`
 
 ## Environment
 
-Dummy development values are already in `src/main/resources/application.yml`. Copy `.env.example` values into your deployment environment and replace secrets before production.
+Copy values from `.env.example` into your deployment environment and replace secrets before production. Each service also has defaults under `services/*/src/main/resources/application.yml`.
 
-Required settings:
+Notable secrets (must match across services that share them):
 
-```bash
-DB_URL=jdbc:postgresql://localhost:5432/the_chat
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
-CORS_ALLOWED_ORIGINS=http://localhost:3000
-AUTH_COOKIE_NAME=access_token
-AUTH_COOKIE_SECURE=false
-AUTH_COOKIE_SAME_SITE=Lax
-AUTH_COOKIE_PATH=/
-JWT_SECRET=replace-this-dummy-secret-with-at-least-32-characters
-```
+- `JWT_SECRET` — end-user access tokens (Auth issues; User/Chat verify)
+- `SERVICE_JWT_SECRET` — service-to-service tokens for User `/internal/**` (separate from `JWT_SECRET`)
 
 ## Auth Routes
 
@@ -67,25 +81,15 @@ Content-Type: application/json
 }
 ```
 
-Both routes set an HTTP-only `access_token` cookie and return:
+Both routes set an HTTP-only `access_token` cookie.
 
-```json
-{
-  "expiresInSeconds": 3600,
-  "user": {
-    "id": "...",
-    "email": "user@example.com",
-    "name": "User"
-  }
-}
-```
-
-Logout clears the auth cookie:
+Logout:
 
 ```http
 POST /api/v1/auth/logout
 ```
 
-<!-- Stop-Process  -->
+## Further reading
 
-taskkill /IM java.exe /F
+- [Phase 5 — service-to-service auth](docs/architecture/phase-5-service-auth.md)
+- [Phase 6 — monorepo layout](docs/architecture/phase-6-monorepo-layout.md)

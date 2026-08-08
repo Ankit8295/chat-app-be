@@ -1,11 +1,11 @@
 # Auth service runtime image.
 # Build first:  .\gradlew.bat :auth:bootJar -x test
-# Then:         docker compose up --build
+# Then:         docker compose -f infra/compose.yml up --build
 FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-COPY auth/build/libs/auth-0.0.1-SNAPSHOT.jar app.jar
+COPY services/auth/build/libs/auth-0.0.1-SNAPSHOT.jar app.jar
 
 EXPOSE 8083
 

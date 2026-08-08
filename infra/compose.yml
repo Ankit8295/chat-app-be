@@ -1,3 +1,5 @@
+name: the-chat
+
 services:
   # ──────────────────────────────────────────────────────────────────────────────
   # Databases (one per service — database-per-service pattern)
@@ -74,8 +76,8 @@ services:
 
   auth-service:
     build:
-      context: .
-      dockerfile: Dockerfile.auth
+      context: ..
+      dockerfile: infra/docker/Dockerfile.auth
     container_name: the-chat-auth-service
     environment:
       SERVER_PORT: 8083
@@ -113,8 +115,8 @@ services:
 
   user-service:
     build:
-      context: .
-      dockerfile: Dockerfile.user
+      context: ..
+      dockerfile: infra/docker/Dockerfile.user
     container_name: the-chat-user-service
     environment:
       SERVER_PORT: 8084
@@ -145,8 +147,8 @@ services:
 
   backend-1:
     build:
-      context: .
-      dockerfile: Dockerfile.chat
+      context: ..
+      dockerfile: infra/docker/Dockerfile.chat
     container_name: the-chat-backend-1
     environment:
       SERVER_PORT: 8081
@@ -181,8 +183,8 @@ services:
 
   backend-2:
     build:
-      context: .
-      dockerfile: Dockerfile.chat
+      context: ..
+      dockerfile: infra/docker/Dockerfile.chat
     container_name: the-chat-backend-2
     environment:
       SERVER_PORT: 8082
