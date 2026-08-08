@@ -1,0 +1,9 @@
+// Shared DTOs, error types, and infrastructure utilities used across all services.
+// MUST NOT depend on any bounded context package (com.thechat.auth.*, .user.*, .chat.*).
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    // CookieBearerTokenResolver, JwtProperties, AuthCookieProperties, CorsProperties
+    // are in com.thechat.security (this module) — shared by Auth and remaining monolith.
+    api 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+}

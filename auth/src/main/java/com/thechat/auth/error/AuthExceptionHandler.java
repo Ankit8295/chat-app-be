@@ -1,0 +1,80 @@
+package com.thechat.auth.error;
+
+import com.thechat.auth.EmailAlreadyExistsException;
+import com.thechat.auth.InvalidRefreshTokenException;
+import com.thechat.auth.RegistrationFailedException;
+import com.thechat.common.error.ApiError;
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.Map;
+import java.util.stream.Collectors;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+@RestControllerAdvice
+public class AuthExceptionHandler {
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    ResponseEntity<ApiError> handleValidation(
+            MethodArgumentNotValidException exception,
+            HttpServletRequest request) {
+        Map<String, String> fieldErrors = exception.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .collect(Collectors.toMap(
+                        fe -> fe.getField(),
+                        fe -> fe.getDefaultMessage() == null ? "Invalid value" : fe.getDefaultMessage(),
+                        (existing, ignored) -> existing));
+
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status).body(ApiError.withFieldErrors(
+                status.value(), status.getReasonPhrase(),
+                "Request validation failed", request.getRequestURI(), fieldErrors));
+    }
+
+    @ExceptionHandler(EmailAlreadyExistsException.class)
+    ResponseEntity<ApiError> handleEmailAlreadyExists(
+            EmailAlreadyExistsException exception,
+            HttpServletRequest request) {
+        HttpStatus status = HttpStatus.CONFLICT;
+        return ResponseEntity.status(status).body(ApiError.of(
+                status.value(), status.getReasonPhrase(),
+                exception.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    ResponseEntity<ApiError> handleInvalidRefreshToken(HttpServletRequest request) {
+        HttpStatus status = HttpStatus.UNAUTHORIZED;
+        return ResponseEntity.status(status).body(ApiError.of(
+                status.value(), status.getReasonPhrase(),
+                "Invalid or expired refresh token", request.getRequestURI()));
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    ResponseEntity<ApiError> handleBadCredentials(HttpServletRequest request) {
+        HttpStatus status = HttpStatus.UNAUTHORIZED;
+        return ResponseEntity.status(status).body(ApiError.of(
+                status.value(), status.getReasonPhrase(),
+                "Invalid email or password", request.getRequestURI()));
+    }
+
+    @ExceptionHandler(RegistrationFailedException.class)
+    ResponseEntity<ApiError> handleRegistrationFailed(HttpServletRequest request) {
+        HttpStatus status = HttpStatus.SERVICE_UNAVAILABLE;
+        return ResponseEntity.status(status).body(ApiError.of(
+                status.value(), status.getReasonPhrase(),
+                "Registration is temporarily unavailable. Please try again.", request.getRequestURI()));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<ApiError> handleDataIntegrityViolation(HttpServletRequest request) {
+        HttpStatus status = HttpStatus.CONFLICT;
+        return ResponseEntity.status(status).body(ApiError.of(
+                status.value(), status.getReasonPhrase(),
+                "Request conflicts with existing data", request.getRequestURI()));
+    }
+}

@@ -1,41 +1,38 @@
 plugins {
-	id 'java'
-	id 'org.springframework.boot' version '4.1.0'
-	id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.springframework.boot' version '4.1.0' apply false
+    id 'io.spring.dependency-management' version '1.1.7' apply false
 }
 
 group = 'com.thechat'
 version = '0.0.1-SNAPSHOT'
 description = 'Production-ready backend for The Chat'
 
-java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
-	}
-}
+subprojects {
+    apply plugin: 'java-library'
+    apply plugin: 'io.spring.dependency-management'
 
-repositories {
-	mavenCentral()
-}
+    // Without this, subprojects default to version 'unspecified', so bootJar produces
+    // e.g. "chat.jar" instead of "chat-0.0.1-SNAPSHOT.jar" — breaking the Dockerfiles.
+    group = rootProject.group
+    version = rootProject.version
 
-dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-actuator'
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
-	implementation 'org.springframework.boot:spring-boot-starter-security'
-	implementation 'org.springframework.boot:spring-boot-starter-validation'
-	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
-	implementation 'org.springframework.boot:spring-boot-starter-flyway'
-	implementation 'org.springframework.boot:spring-boot-starter-websocket'
-	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-	implementation 'org.flywaydb:flyway-database-postgresql'
-	runtimeOnly 'org.postgresql:postgresql'
-	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
 
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testImplementation 'org.springframework.security:spring-security-test'
-}
+    repositories {
+        mavenCentral()
+    }
 
-tasks.named('test') {
-	useJUnitPlatform()
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.boot:spring-boot-dependencies:4.1.0"
+        }
+    }
+
+    tasks.named('test') {
+        useJUnitPlatform()
+    }
 }

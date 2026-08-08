@@ -1,1 +1,6 @@
 rootProject.name = 'the-chat-backend'
+
+include 'common'
+include 'user'
+include 'auth'
+include 'chat'
