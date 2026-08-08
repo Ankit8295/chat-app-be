@@ -8,6 +8,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -57,7 +58,11 @@ public class ChatServiceSecurityConfig {
                 .build();
     }
 
+    // @Primary because common's ServiceJwtConfig also contributes a JwtDecoder (for validating
+    // service tokens, Phase 5) to this same context — this one stays the default for the implicit
+    // .jwt(jwt -> {}) lookup below, since Chat only ever validates end-user tokens on this chain.
     @Bean
+    @Primary
     JwtDecoder jwtDecoder(JwtProperties jwtProperties) {
         byte[] secretBytes = jwtProperties.secret().getBytes(StandardCharsets.UTF_8);
         SecretKey key = new SecretKeySpec(secretBytes, "HmacSHA256");

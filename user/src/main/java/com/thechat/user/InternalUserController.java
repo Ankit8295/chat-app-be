@@ -20,7 +20,7 @@ import com.thechat.user.dto.EnsureFriendshipRequest;
 import jakarta.validation.Valid;
 
 /**
- * Internal service-to-service API — not publicly routable (blocked at nginx).
+ * Internal service-to-service API.
  *
  * Called by:
  *   Auth service   — POST /internal/users (register saga step 2)
@@ -28,7 +28,11 @@ import jakarta.validation.Valid;
  *   Chat service   — GET /internal/users?ids=... (batch profile fetch, avoids network N+1)
  *                    POST /internal/friendships/ensure (direct conversation creates friendship)
  *
- * Phase 5 will add mTLS / service token enforcement at the gateway.
+ * Phase 5: every request here must carry a valid short-lived service token (enforced by
+ * UserServiceSecurityConfig's internalSecurityFilterChain, requiring SCOPE_internal). Not routing
+ * these paths through nginx was never sufficient on its own — user-service's port is still directly
+ * published for local debugging, so relying on "the gateway won't forward it" is security by network
+ * topology, not authentication. A leaked/guessed URL should not be enough to call this API.
  */
 @RestController
 @RequestMapping("/internal")

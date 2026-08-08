@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import com.thechat.security.ServiceAuthRequestInterceptor;
+
 /**
  * HTTP client from Auth service → User service.
  *
@@ -17,8 +19,10 @@ import org.springframework.web.client.RestClient;
  *   Compensation — if step 2 fails, Auth deletes the credential (deleteProfile never called on user
  *                  here because the User never created the profile; Auth just deletes its own record).
  *
- * For now there is no mTLS or service token; that is added in Phase 5 (API gateway / mTLS).
- * The /internal/** paths are blocked at the nginx level so they are not publicly accessible.
+ * Phase 5: every call is stamped with a short-lived service token (see ServiceAuthRequestInterceptor)
+ * so User's /internal/** routes can verify the caller is a real internal service, not just "whoever
+ * can reach this port" — nginx not routing /internal/** publicly was never sufficient on its own,
+ * since user-service's port is still directly published for local debugging.
  */
 @Component
 public class UserProfileClient {
@@ -29,8 +33,12 @@ public class UserProfileClient {
 
     public UserProfileClient(
             RestClient.Builder restClientBuilder,
-            @Value("${app.services.user.base-url}") String userServiceBaseUrl) {
-        this.restClient = restClientBuilder.baseUrl(userServiceBaseUrl).build();
+            @Value("${app.services.user.base-url}") String userServiceBaseUrl,
+            ServiceAuthRequestInterceptor serviceAuthRequestInterceptor) {
+        this.restClient = restClientBuilder
+                .baseUrl(userServiceBaseUrl)
+                .requestInterceptor(serviceAuthRequestInterceptor)
+                .build();
     }
 
     /**

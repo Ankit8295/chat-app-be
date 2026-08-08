@@ -8,6 +8,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -80,12 +81,18 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    // @Primary because common's ServiceJwtConfig also contributes a JwtEncoder/JwtDecoder pair
+    // (for service-to-service tokens, Phase 5) to this same application context. These are the
+    // end-user token beans and remain the default for any unqualified injection point, e.g.
+    // JwtService's constructor and oauth2ResourceServer's implicit .jwt(jwt -> {}) lookup.
     @Bean
+    @Primary
     JwtEncoder jwtEncoder(JwtProperties jwtProperties) {
         return new NimbusJwtEncoder(new ImmutableSecret<>(jwtSecretKey(jwtProperties)));
     }
 
     @Bean
+    @Primary
     JwtDecoder jwtDecoder(JwtProperties jwtProperties) {
         return NimbusJwtDecoder.withSecretKey(jwtSecretKey(jwtProperties))
                 .macAlgorithm(MacAlgorithm.HS256)

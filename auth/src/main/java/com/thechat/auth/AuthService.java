@@ -3,6 +3,8 @@ package com.thechat.auth;
 import java.util.Locale;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,7 +20,7 @@ import com.thechat.security.JwtService;
  *
  * Register saga:
  *   1. Persist credential locally (auth_db).
- *   2. Call User service to create profile (HTTP).
+ *   2. Call User service to create profile (HTTP, authenticated with a service token — Phase 5).
  *   Compensation: if step 2 fails, delete the credential and rethrow.
  *
  * KNOWN TRADE-OFF: if the JVM crashes between step 1 and step 2 the credential is orphaned.
@@ -26,6 +28,8 @@ import com.thechat.security.JwtService;
  */
 @Service
 public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
@@ -70,6 +74,7 @@ public class AuthService {
         try {
             userProfileClient.createProfile(userId, email, request.name().trim());
         } catch (Exception e) {
+            log.error("createProfile call to User service failed", e);
             credentialRepository.deleteById(userId);
             throw new RegistrationFailedException(
                     "Registration failed: user profile could not be created. Credential rolled back.", e);

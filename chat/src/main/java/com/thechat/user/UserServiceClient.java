@@ -14,6 +14,8 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import com.thechat.security.ServiceAuthRequestInterceptor;
+
 /**
  * HTTP client from Chat service → User service.
  *
@@ -21,6 +23,8 @@ import org.springframework.web.client.RestClient;
  *   Bad:  for each participant → GET /internal/users/{id}  (N round-trips)
  *   Good: GET /internal/users?ids=id1,id2,id3             (1 round-trip)
  *
+ * Phase 5: every call carries a short-lived service token (ServiceAuthRequestInterceptor) so
+ * User's /internal/** routes can verify the caller's identity instead of trusting network position.
  * Phase 6 will add a short-lived cache (Cache-Aside) on top of this client.
  */
 @Component
@@ -32,8 +36,12 @@ public class UserServiceClient {
 
     public UserServiceClient(
             RestClient.Builder restClientBuilder,
-            @Value("${app.services.user.base-url}") String userServiceBaseUrl) {
-        this.restClient = restClientBuilder.baseUrl(userServiceBaseUrl).build();
+            @Value("${app.services.user.base-url}") String userServiceBaseUrl,
+            ServiceAuthRequestInterceptor serviceAuthRequestInterceptor) {
+        this.restClient = restClientBuilder
+                .baseUrl(userServiceBaseUrl)
+                .requestInterceptor(serviceAuthRequestInterceptor)
+                .build();
     }
 
     /**

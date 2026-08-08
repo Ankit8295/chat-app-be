@@ -54,3 +54,9 @@ app:
     secret: ${JWT_SECRET:replace-this-dummy-secret-with-at-least-32-characters}
     access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
     refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:P30D}
+  service-jwt:
+    # Separate secret from app.jwt — signs the short-lived service-identity token this service
+    # (as a caller) attaches to every outgoing call to User's /internal/** routes.
+    issuer: ${SERVICE_JWT_ISSUER:the-chat-internal}
+    secret: ${SERVICE_JWT_SECRET:replace-this-dummy-service-secret-with-at-least-32-chars}
+    ttl: ${SERVICE_JWT_TTL:PT1M}
