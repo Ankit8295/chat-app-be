@@ -14,6 +14,7 @@ public record ConversationDetailResponse(
         String type,
         String name,
         String image,
+        String about,
         ConversationParticipantResponse friend,
         List<ConversationParticipantResponse> participants,
         UUID createdBy,
@@ -21,7 +22,8 @@ public record ConversationDetailResponse(
         Instant updatedAt) {
 
     /**
-     * @param profileMap userId → UserProfile fetched from User service via batch call
+     * @param profileMap userId → UserProfile fetched from User service via batch
+     *                   call
      */
     public static ConversationDetailResponse from(
             Conversation conversation,
@@ -57,6 +59,7 @@ public record ConversationDetailResponse(
                 conversation.getType().name().toLowerCase(),
                 derivedName,
                 derivedImage,
+                conversation.getAbout(),
                 friend,
                 participants,
                 conversation.getCreatedBy(),

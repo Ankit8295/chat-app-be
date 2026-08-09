@@ -9,10 +9,10 @@ import jakarta.validation.constraints.NotNull;
 
 @ValidCreateConversation
 public record CreateConversationRequest(
-        UUID userId,
-        @NotNull ConversationType type,
-        String name,
-        String about,
-        String image,
-        List<UUID> participants) {
+                UUID userId,
+                @NotNull ConversationType type,
+                String name,
+                String about,
+                String image,
+                List<UUID> participants) {
 }

@@ -11,29 +11,43 @@ import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.thechat.conversation.dto.ConversationDetailResponse;
 import com.thechat.conversation.dto.ConversationResponse;
 import com.thechat.conversation.dto.CreateConversationRequest;
+import com.thechat.conversation.dto.UpdateGroupConversationRequest;
+import com.thechat.realtime.RealtimePublisher;
 import com.thechat.user.UserProfile;
 import com.thechat.user.UserServiceClient;
 
 /**
- * Phase 3: ConversationService no longer imports UserRepository or FriendshipRepository.
+ * Phase 3: ConversationService no longer imports UserRepository or
+ * FriendshipRepository.
  * User profiles are fetched in a single batch HTTP call (avoids network N+1).
- * Friendship writes delegate to User service via UserServiceClient.ensureFriendship().
+ * Friendship writes delegate to User service via
+ * UserServiceClient.ensureFriendship().
  */
 @Service
 public class ConversationService {
 
+    private static final Logger log = LoggerFactory.getLogger(ConversationService.class);
+
     private final ConversationRepository conversationRepository;
     private final UserServiceClient userServiceClient;
+    private final RealtimePublisher realtimePublisher;
 
     public ConversationService(
             ConversationRepository conversationRepository,
-            UserServiceClient userServiceClient) {
+            UserServiceClient userServiceClient,
+            RealtimePublisher realtimePublisher) {
         this.conversationRepository = conversationRepository;
         this.userServiceClient = userServiceClient;
+        this.realtimePublisher = realtimePublisher;
     }
 
     @Transactional(readOnly = true)
@@ -81,12 +95,73 @@ public class ConversationService {
         };
     }
 
+    @Transactional
+    public ConversationResponse updateGroupConversation(
+            UUID currentUserId,
+            UUID conversationId,
+            UpdateGroupConversationRequest request) {
+        Conversation conversation = conversationRepository
+                .findByIdWithParticipants(conversationId)
+                .orElseThrow(() -> new ConversationNotFoundException(conversationId));
+
+        boolean isParticipant = conversation.getParticipants().stream()
+                .anyMatch(p -> p.getUserId().equals(currentUserId));
+        if (!isParticipant) {
+            throw new ForbiddenUserException();
+        }
+
+        if (conversation.getType() != ConversationType.GROUP) {
+            throw new IllegalArgumentException("Only GROUP conversations can be updated");
+        }
+
+        if (!conversation.getCreatedBy().equals(currentUserId)) {
+            throw new ForbiddenUserException();
+        }
+
+        if (request.name() != null && !request.name().isBlank()
+                && !request.name().equals(conversation.getName())) {
+            conversation.setName(request.name().trim());
+        }
+
+        if (request.about() != null && !request.about().isBlank()) {
+            conversation.setAbout(request.about().trim());
+        }
+        ConversationResponse conversationResponse = ConversationResponse.from(conversation, currentUserId, Map.of());
+        List<UUID> participantIds = conversation.getParticipants().stream()
+                .map(ConversationParticipant::getUserId)
+                .toList();
+
+        // Persist is source of truth; WS fan-out is best-effort after commit.
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    publishGroupUpdateBestEffort(conversationId, participantIds, conversationResponse);
+                }
+            });
+        } else {
+            publishGroupUpdateBestEffort(conversationId, participantIds, conversationResponse);
+        }
+
+        return conversationResponse;
+    }
+
+    private void publishGroupUpdateBestEffort(
+            UUID conversationId,
+            List<UUID> participantIds,
+            ConversationResponse conversationResponse) {
+        try {
+            realtimePublisher.publishGroupUpdate(participantIds, conversationResponse);
+        } catch (Exception ex) {
+            log.error("Failed to broadcast group update for conversation {}", conversationId, ex);
+        }
+    }
+
     private ConversationResponse createDirectConversation(UUID currentUserId, UUID targetUserId) {
         if (currentUserId.equals(targetUserId)) {
             throw new IllegalArgumentException("Cannot create a conversation with yourself");
         }
 
-        // Verify both users exist via batch fetch
         Map<UUID, UserProfile> profileMap = userServiceClient.batchGetByIds(
                 List.of(currentUserId, targetUserId));
         if (!profileMap.containsKey(currentUserId) || !profileMap.containsKey(targetUserId)) {
@@ -109,7 +184,6 @@ public class ConversationService {
             }
         }
 
-        // Friendship write moves to User service (Phase 3 seam)
         userServiceClient.ensureFriendship(currentUserId, targetUserId);
 
         conversation = conversationRepository
@@ -127,7 +201,6 @@ public class ConversationService {
             throw new IllegalArgumentException("Group must include at least one other participant");
         }
 
-        // Verify all participants exist via batch fetch
         Set<UUID> allIds = new HashSet<>(participantIds);
         allIds.add(currentUserId);
         Map<UUID, UserProfile> profileMap = userServiceClient.batchGetByIds(List.copyOf(allIds));
@@ -140,7 +213,8 @@ public class ConversationService {
         }
 
         String about = request.about() == null || request.about().isBlank()
-                ? null : request.about().trim();
+                ? null
+                : request.about().trim();
 
         Conversation conversation = new Conversation(
                 ConversationType.GROUP, request.name().trim(), about, request.image(), currentUserId, null);

@@ -2,6 +2,7 @@ package com.thechat.chat.error;
 
 import com.thechat.common.error.ApiError;
 import com.thechat.conversation.ConversationNotFoundException;
+import com.thechat.conversation.ForbiddenUserException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -51,6 +52,16 @@ public class GlobalExceptionHandler {
             ConversationNotFoundException exception,
             HttpServletRequest request) {
         HttpStatus status = HttpStatus.NOT_FOUND;
+        return ResponseEntity.status(status).body(ApiError.of(
+                status.value(), status.getReasonPhrase(),
+                exception.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(ForbiddenUserException.class)
+    ResponseEntity<ApiError> handleForbiddenUser(
+            ForbiddenUserException exception,
+            HttpServletRequest request) {
+        HttpStatus status = HttpStatus.FORBIDDEN;
         return ResponseEntity.status(status).body(ApiError.of(
                 status.value(), status.getReasonPhrase(),
                 exception.getMessage(), request.getRequestURI()));

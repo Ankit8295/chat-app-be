@@ -12,13 +12,14 @@ public record ConversationResponse(
         UUID id,
         String type,
         String name,
+        String about,
         String image,
         UUID createdBy,
         Instant createdAt,
         Instant updatedAt) {
 
     /**
-     * @param profileMap  userId → UserProfile fetched from User service via batch call
+     * @param profileMap userId → UserProfile fetched from User service via batch call
      */
     public static ConversationResponse from(
             Conversation conversation,
@@ -47,6 +48,7 @@ public record ConversationResponse(
                 conversation.getId(),
                 conversation.getType().name().toLowerCase(),
                 derivedName,
+                conversation.getAbout(),
                 derivedImage,
                 conversation.getCreatedBy(),
                 conversation.getCreatedAt(),

@@ -9,6 +9,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import com.thechat.AppProperties;
+import com.thechat.conversation.dto.ConversationResponse;
 import com.thechat.message.dto.MessageResponse;
 import com.thechat.ws.WsEventTypes;
 import com.thechat.ws.dto.WsEnvelope;
@@ -47,6 +48,10 @@ public class RealtimePublisher {
 
     public void publishMessageDeleted(List<UUID> targetUserIds, JsonNode payload) {
         publish(WsEventTypes.MESSAGE_DELETED, targetUserIds, payload);
+    }
+
+    public void publishGroupUpdate(List<UUID> targetUserIds, ConversationResponse response) {
+        publish(WsEventTypes.GROUP_UPDATE, targetUserIds, jsonMapper.valueToTree(response));
     }
 
     private void publish(String type, List<UUID> targetUserIds, JsonNode payload) {

@@ -10,5 +10,5 @@ import jakarta.validation.constraints.Size;
 public record CreateUserProfileRequest(
                 @NotNull UUID userId,
                 @NotBlank @Email String email,
-                @NotBlank @Size(min = 1, max = 80) String name) {
+                @NotBlank @Size(min = 2, max = 80) String name) {
 }

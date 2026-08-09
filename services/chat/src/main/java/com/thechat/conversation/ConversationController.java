@@ -9,6 +9,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.thechat.conversation.dto.ConversationDetailResponse;
 import com.thechat.conversation.dto.ConversationResponse;
 import com.thechat.conversation.dto.CreateConversationRequest;
+import com.thechat.conversation.dto.UpdateGroupConversationRequest;
 
 import jakarta.validation.Valid;
 
@@ -52,6 +54,17 @@ public class ConversationController {
             @Valid @RequestBody CreateConversationRequest request) {
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
         ConversationResponse conversation = conversationService.createConversation(currentUserId, request);
+        return ResponseEntity.ok(conversation);
+    }
+
+    @PutMapping("/{conversationId}")
+    public ResponseEntity<ConversationResponse> updateGroupConversation(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID conversationId,
+            @Valid @RequestBody UpdateGroupConversationRequest request) {
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+        ConversationResponse conversation = conversationService.updateGroupConversation(
+                currentUserId, conversationId, request);
         return ResponseEntity.ok(conversation);
     }
 }

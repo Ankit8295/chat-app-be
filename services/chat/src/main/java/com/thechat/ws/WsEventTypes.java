@@ -16,6 +16,8 @@ public final class WsEventTypes {
     public static final String MESSAGE_DELETE = "message_delete"; // client send delete message under this key
     public static final String MESSAGE_DELETED = "message_deleted"; // clients recieve deleted message under this key
 
+    public static final String GROUP_UPDATE = "group_update"; // clients receive group rename/about
+
     private WsEventTypes() {
     }
 }

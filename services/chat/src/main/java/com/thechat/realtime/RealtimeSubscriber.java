@@ -50,7 +50,8 @@ public class RealtimeSubscriber implements MessageListener {
             switch (event.type()) {
                 case WsEventTypes.MESSAGE_NEW,
                         WsEventTypes.MESSAGE_UPDATED,
-                        WsEventTypes.MESSAGE_DELETED ->
+                        WsEventTypes.MESSAGE_DELETED,
+                        WsEventTypes.GROUP_UPDATE ->
                     sendMessageEvent(event);
 
                 default -> log.warn(
