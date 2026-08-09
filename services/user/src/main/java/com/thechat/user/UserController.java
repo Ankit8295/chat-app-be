@@ -8,6 +8,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.thechat.common.dto.PageResponse;
 import com.thechat.friendship.dto.FriendResponse;
 import com.thechat.user.dto.CreateUserPreferenceRequest;
+import com.thechat.user.dto.UpdateUserProfileRequest;
 
 import jakarta.validation.Valid;
 
@@ -56,6 +58,13 @@ public class UserController {
     public ResponseEntity<UserResponse> getMe(@AuthenticationPrincipal Jwt jwt) {
         UUID requesterId = UUID.fromString(jwt.getClaimAsString("userId"));
         return ResponseEntity.ok(userService.getUserById(requesterId));
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<UserResponse> updateMe(@AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody UpdateUserProfileRequest request) {
+        UUID requesterId = UUID.fromString(jwt.getClaimAsString("userId"));
+        return ResponseEntity.ok(userService.updateProfile(requesterId, request));
     }
 
     @GetMapping("/me/preferences")

@@ -13,7 +13,8 @@ import jakarta.persistence.Table;
 /**
  * User service owns: profile data (name, image, email).
  * Credentials (passwordHash) moved to Auth service in Phase 2.
- * The UUID id is shared with Auth's UserCredential — same identity, different contexts.
+ * The UUID id is shared with Auth's UserCredential — same identity, different
+ * contexts.
  */
 @Entity
 @Table(name = "app_users")
@@ -27,6 +28,9 @@ public class AppUser {
 
     @Column(nullable = false, length = 80)
     private String name;
+
+    @Column(length = 160)
+    private String about;
 
     @Column(columnDefinition = "TEXT")
     private String image;
@@ -66,12 +70,24 @@ public class AppUser {
         return email;
     }
 
+    public String getAbout() {
+        return about;
+    }
+
     public String getName() {
         return name;
     }
 
     public String getImage() {
         return image;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setAbout(String about) {
+        this.about = about;
     }
 
     public void setImage(String image) {

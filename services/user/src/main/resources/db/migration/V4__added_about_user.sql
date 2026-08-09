@@ -1,0 +1,2 @@
+ALTER TABLE app_users
+ADD COLUMN about VARCHAR(160);

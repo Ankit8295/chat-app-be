@@ -16,6 +16,7 @@ import com.thechat.friendship.Friendship;
 import com.thechat.friendship.FriendshipRepository;
 import com.thechat.friendship.FriendshipStatus;
 import com.thechat.friendship.dto.FriendResponse;
+import com.thechat.user.dto.UpdateUserProfileRequest;
 
 @Service
 public class UserService {
@@ -111,6 +112,27 @@ public class UserService {
         }
         AppUser user = new AppUser(userId, email, name);
         userRepository.save(user);
+    }
+
+    @Transactional
+    public UserResponse updateProfile(UUID userId, UpdateUserProfileRequest request) {
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+
+        if (request.name() != null && !request.name().isBlank()
+                && !request.name().equals(user.getName())) {
+            user.setName(request.name().trim());
+        }
+
+        if (request.about() != null && !request.about().isBlank()) {
+            user.setAbout(request.about().trim());
+        }
+
+        if (request.image() != null && !request.image().isBlank()) {
+            user.setImage(request.image().trim());
+        }
+
+        return UserResponse.from(user);
     }
 
     @Transactional
