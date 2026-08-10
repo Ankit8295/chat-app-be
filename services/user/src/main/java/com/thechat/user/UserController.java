@@ -16,7 +16,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.thechat.common.dto.PageResponse;
 import com.thechat.friendship.dto.FriendResponse;
+import com.thechat.user.dto.AvatarConfirmRequest;
+import com.thechat.user.dto.AvatarPresignRequest;
 import com.thechat.user.dto.CreateUserPreferenceRequest;
+import com.thechat.user.dto.ProfilePresignedUrlResponse;
 import com.thechat.user.dto.UpdateUserProfileRequest;
 
 import jakarta.validation.Valid;
@@ -65,6 +68,22 @@ public class UserController {
             @Valid @RequestBody UpdateUserProfileRequest request) {
         UUID requesterId = UUID.fromString(jwt.getClaimAsString("userId"));
         return ResponseEntity.ok(userService.updateProfile(requesterId, request));
+    }
+
+    @PostMapping("/me/avatar/presign")
+    public ResponseEntity<ProfilePresignedUrlResponse> presignAvatar(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody AvatarPresignRequest request) {
+        UUID requesterId = UUID.fromString(jwt.getClaimAsString("userId"));
+        return ResponseEntity.ok(userService.createAvatarPresign(requesterId, request));
+    }
+
+    @PostMapping("/me/avatar/confirm")
+    public ResponseEntity<UserResponse> confirmAvatar(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody AvatarConfirmRequest request) {
+        UUID requesterId = UUID.fromString(jwt.getClaimAsString("userId"));
+        return ResponseEntity.ok(userService.confirmAvatarUpload(requesterId, request));
     }
 
     @GetMapping("/me/preferences")

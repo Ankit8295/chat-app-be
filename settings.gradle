@@ -1,14 +1,16 @@
 rootProject.name = 'the-chat-backend'
 
 include 'common'
+include 'object-storage'
 include 'user'
 include 'auth'
 include 'chat'
 
-// Physical layout: deployables under services/, shared library under libs/.
+// Physical layout: deployables under services/, shared libraries under libs/.
 // Gradle project names stay :auth / :user / :chat / :common so existing
 // commands (.\gradlew.bat :auth:bootJar) and project(':common') deps keep working.
 project(':common').projectDir = file('libs/common')
+project(':object-storage').projectDir = file('libs/object-storage')
 project(':auth').projectDir = file('services/auth')
 project(':user').projectDir = file('services/user')
 project(':chat').projectDir = file('services/chat')

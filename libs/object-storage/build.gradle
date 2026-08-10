@@ -1,0 +1,13 @@
+// Shared Cloudflare R2 / S3-compatible object storage helpers.
+// Used by User (avatars) and later Chat (group images / attachments).
+// MUST NOT depend on auth/user/chat bounded contexts.
+//
+// Consume from a service with:
+//   implementation project(':object-storage')
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // R2 is S3-compatible. S3Presigner lives in this same artifact.
+    api 'software.amazon.awssdk:s3:2.30.36'
+}

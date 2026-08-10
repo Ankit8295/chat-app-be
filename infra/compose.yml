@@ -118,6 +118,10 @@ services:
       context: ..
       dockerfile: infra/docker/Dockerfile.user
     container_name: the-chat-user-service
+    # Loads R2_* (and other shared secrets) from chat-app-be/.env.
+    # Keys listed under environment: below override .env (e.g. DB_URL for Docker network).
+    env_file:
+      - ../.env
     environment:
       SERVER_PORT: 8084
       DB_URL: jdbc:postgresql://user-postgres:5432/user_db

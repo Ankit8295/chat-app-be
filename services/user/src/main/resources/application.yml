@@ -52,3 +52,11 @@ app:
     issuer: ${SERVICE_JWT_ISSUER:the-chat-internal}
     secret: ${SERVICE_JWT_SECRET:replace-this-dummy-service-secret-with-at-least-32-chars}
     ttl: ${SERVICE_JWT_TTL:PT1M}
+  r2:
+    endpoint: ${R2_ENDPOINT}
+    access-key-id: ${R2_ACCESS_KEY_ID}
+    secret-access-key: ${R2_SECRET_ACCESS_KEY}
+    bucket: ${R2_BUCKET_NAME}
+    public-base-url: ${R2_PUBLIC_BASE_URL}
+    put-url-ttl: ${R2_PUT_URL_TTL:PT15M}
+    get-url-ttl: ${R2_GET_URL_TTL:PT5M}

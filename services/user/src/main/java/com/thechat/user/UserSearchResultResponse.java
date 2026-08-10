@@ -9,12 +9,12 @@ public record UserSearchResultResponse(
     String img,
     String friendshipStatus
 ) {
-    public static UserSearchResultResponse of(AppUser user, String friendshipStatus) {
+    public static UserSearchResultResponse of(AppUser user, String imageUrl, String friendshipStatus) {
         return new UserSearchResultResponse(
             user.getId(),
             user.getEmail(),
             user.getName(),
-            user.getImage(),
+            imageUrl,
             friendshipStatus
         );
     }

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.thechat.common.error.ApiError;
+import com.thechat.user.ProfileImageNotFoundException;
 import com.thechat.user.UserNotFoundException;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,9 +36,29 @@ public class UserExceptionHandler {
                 "Request validation failed", request.getRequestURI(), fieldErrors));
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    ResponseEntity<ApiError> handleIllegalArgument(
+            IllegalArgumentException exception,
+            HttpServletRequest request) {
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status).body(ApiError.of(
+                status.value(), status.getReasonPhrase(),
+                exception.getMessage(), request.getRequestURI()));
+    }
+
     @ExceptionHandler(UserNotFoundException.class)
     ResponseEntity<ApiError> handleUserNotFound(
             UserNotFoundException exception,
+            HttpServletRequest request) {
+        HttpStatus status = HttpStatus.NOT_FOUND;
+        return ResponseEntity.status(status).body(ApiError.of(
+                status.value(), status.getReasonPhrase(),
+                exception.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(ProfileImageNotFoundException.class)
+    ResponseEntity<ApiError> handleProfileImageNotFound(
+            ProfileImageNotFoundException exception,
             HttpServletRequest request) {
         HttpStatus status = HttpStatus.NOT_FOUND;
         return ResponseEntity.status(status).body(ApiError.of(

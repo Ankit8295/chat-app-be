@@ -14,12 +14,12 @@ public record FriendResponse(
     Instant createdAt,
     Instant updatedAt
 ) {
-    public static FriendResponse from(Friendship friendship) {
+    public static FriendResponse from(Friendship friendship, String profileImageUrl) {
         return new FriendResponse(
             friendship.getFriendUser().getId(),
             friendship.getFriendUser().getName(),
             friendship.getFriendUser().getEmail(),
-            friendship.getFriendUser().getImage(),
+            profileImageUrl,
             friendship.getStatus().name().toLowerCase(),
             friendship.getCreatedAt(),
             friendship.getUpdatedAt()
