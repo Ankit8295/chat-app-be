@@ -60,3 +60,6 @@ app:
     public-base-url: ${R2_PUBLIC_BASE_URL}
     put-url-ttl: ${R2_PUT_URL_TTL:PT15M}
     get-url-ttl: ${R2_GET_URL_TTL:PT5M}
+  profile-image:
+    pending-max-age: ${PROFILE_IMAGE_PENDING_MAX_AGE:PT1H}
+    cleanup-interval-ms: ${PROFILE_IMAGE_CLEANUP_INTERVAL_MS:1800000}

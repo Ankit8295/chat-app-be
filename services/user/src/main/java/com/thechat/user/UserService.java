@@ -40,6 +40,7 @@ public class UserService {
     private final UserPreferenceRepository userPreferenceRepository;
     private final FriendshipRepository friendshipRepository;
     private final ProfileImageRepository profileImageRepository;
+    private final ProfileImageCleanupService profileImageCleanupService;
     private final CloudflareR2Client r2Client;
 
     public UserService(
@@ -47,11 +48,13 @@ public class UserService {
             FriendshipRepository friendshipRepository,
             UserPreferenceRepository userPreferenceRepository,
             ProfileImageRepository profileImageRepository,
+            ProfileImageCleanupService profileImageCleanupService,
             CloudflareR2Client r2Client) {
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
         this.userPreferenceRepository = userPreferenceRepository;
         this.profileImageRepository = profileImageRepository;
+        this.profileImageCleanupService = profileImageCleanupService;
         this.r2Client = r2Client;
     }
 
@@ -185,6 +188,8 @@ public class UserService {
     public ProfilePresignedUrlResponse createAvatarPresign(UUID userId, AvatarPresignRequest request) {
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
+
+        profileImageCleanupService.abandonPendingForUser(userId, user.getImage());
 
         String contentType = normalizeContentType(request.contentType());
         long sizeBytes = requireValidSize(request.sizeBytes());
