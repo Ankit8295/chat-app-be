@@ -6,6 +6,10 @@ build/
 .env
 .env.*
 !.env.example
+!.env.production.example
+
+infra/nginx/certs/*
+!infra/nginx/certs/.gitkeep
 
 *.log
 *.class

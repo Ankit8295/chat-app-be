@@ -61,10 +61,15 @@ public class AuthCookieService {
     }
 
     private ResponseCookie.ResponseCookieBuilder baseCookie(String name, String value) {
-        return ResponseCookie.from(name, value)
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, value)
                 .httpOnly(true)
                 .secure(authCookieProperties.secure())
                 .sameSite(authCookieProperties.sameSite())
                 .path(authCookieProperties.path());
+        String domain = authCookieProperties.domain();
+        if (domain != null && !domain.isBlank()) {
+            builder.domain(domain);
+        }
+        return builder;
     }
 }

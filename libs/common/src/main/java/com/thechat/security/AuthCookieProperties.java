@@ -8,6 +8,8 @@ public record AuthCookieProperties(
         String refreshName,
         boolean secure,
         String sameSite,
-        String path
+        String path,
+        /** Optional cookie Domain (e.g. ".ankitdev.in"). Empty/blank = host-only cookie. */
+        String domain
 ) {
 }

@@ -14,9 +14,14 @@ chat-app-be/
 │   └── common/        # Shared library (NOT deployed) — JWT/service-auth, ApiError, etc.
 ├── infra/
 │   ├── docker/        # Per-service Dockerfiles
-│   ├── nginx/         # API gateway routes
-│   └── compose.yml    # Local orchestration
-├── docs/architecture/
+│   ├── nginx/         # API gateway (local + nginx.prod.conf)
+│   ├── postgres/      # Prod multi-DB init script
+│   ├── scripts/       # Backup helpers
+│   ├── compose.yml    # Local orchestration
+│   └── compose.prod.yml
+├── docs/
+│   ├── architecture/
+│   └── DEPLOY.md      # Production checklist (AWS / Cloudflare / GitHub)
 ├── settings.gradle    # Project includes + projectDir remaps
 ├── build.gradle       # Shared Java 21 / Spring BOM / version for all modules
 └── gradlew.bat
@@ -45,14 +50,25 @@ Or run a single service with Gradle (DBs/Redis must already be up):
 
 API gateway: `http://localhost:8080`
 
+## Production
+
+See **[docs/DEPLOY.md](docs/DEPLOY.md)** for AWS Lightsail + Cloudflare + Vercel steps.
+
+```bash
+cp .env.production.example .env   # fill secrets on the server only
+docker compose -f infra/compose.prod.yml --env-file .env up -d --build
+```
+
 ## Environment
 
-Copy values from `.env.example` into your deployment environment and replace secrets before production. Each service also has defaults under `services/*/src/main/resources/application.yml`.
+Copy values from `.env.production.example` (prod) or your local `.env` and replace secrets before production. Each service also has defaults under `services/*/src/main/resources/application.yml`.
 
 Notable secrets (must match across services that share them):
 
 - `JWT_SECRET` — end-user access tokens (Auth issues; User/Chat verify)
 - `SERVICE_JWT_SECRET` — service-to-service tokens for User `/internal/**` (separate from `JWT_SECRET`)
+- `AUTH_COOKIE_DOMAIN` — e.g. `.ankitdev.in` so cookies are shared by `chat.` and `api.` subdomains
+- `REDIS_PASSWORD` — required in production compose
 
 ## Auth Routes
 

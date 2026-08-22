@@ -1,0 +1,4 @@
+# Place Cloudflare Origin Certificate files here on the server:
+#   origin.pem  — certificate
+#   origin.key  — private key
+# Never commit real certs.

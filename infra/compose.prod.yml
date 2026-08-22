@@ -1,0 +1,248 @@
+# Production stack for AWS Lightsail (4 GB).
+# Usage on the server (from chat-app-be/):
+#   1. Copy .env.production.example -> .env and fill secrets
+#   2. Place Cloudflare Origin certs in infra/nginx/certs/origin.pem + origin.key
+#   3. Build JARs (CI or locally): ./gradlew :auth:bootJar :user:bootJar :chat:bootJar -x test
+#   4. docker compose -f infra/compose.prod.yml --env-file .env up -d --build
+#
+# Note: Postgres/Redis ports are NOT published to the host (internal Docker network only).
+
+name: the-chat-prod
+
+x-jvm-opts: &jvm-opts
+  JAVA_TOOL_OPTIONS: >-
+    -Xmx256m
+    -XX:+UseSerialGC
+    -XX:MaxMetaspaceSize=128m
+    -Xss512k
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: the-chat-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD}
+      POSTGRES_DB: postgres
+      AUTH_DB_USER: ${AUTH_DB_USER}
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD}
+      USER_DB_USER: ${USER_DB_USER}
+      USER_DB_PASSWORD: ${USER_DB_PASSWORD}
+      CHAT_DB_USER: ${CHAT_DB_USER}
+      CHAT_DB_PASSWORD: ${CHAT_DB_PASSWORD}
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - max_connections=50
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init-databases.sh:/docker-entrypoint-initdb.d/01-init-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPERUSER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    container_name: the-chat-redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  auth-service:
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile.auth
+    container_name: the-chat-auth-service
+    restart: unless-stopped
+    environment:
+      <<: *jvm-opts
+      SERVER_PORT: 8083
+      DB_URL: jdbc:postgresql://postgres:5432/auth_db
+      DB_USERNAME: ${AUTH_DB_USER}
+      DB_PASSWORD: ${AUTH_DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL:-PT15M}
+      JWT_REFRESH_TOKEN_TTL: ${JWT_REFRESH_TOKEN_TTL:-P30D}
+      SERVICE_JWT_ISSUER: ${SERVICE_JWT_ISSUER}
+      SERVICE_JWT_SECRET: ${SERVICE_JWT_SECRET}
+      SERVICE_JWT_TTL: ${SERVICE_JWT_TTL:-PT1M}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME:-access_token}
+      AUTH_REFRESH_COOKIE_NAME: ${AUTH_REFRESH_COOKIE_NAME:-refresh_token}
+      AUTH_COOKIE_SECURE: "true"
+      AUTH_COOKIE_SAME_SITE: Lax
+      AUTH_COOKIE_PATH: /
+      AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN:-.ankitdev.in}
+      USER_SERVICE_BASE_URL: http://user-service:8084
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+    networks:
+      - internal
+
+  user-service:
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile.user
+    container_name: the-chat-user-service
+    restart: unless-stopped
+    environment:
+      <<: *jvm-opts
+      SERVER_PORT: 8084
+      DB_URL: jdbc:postgresql://postgres:5432/user_db
+      DB_USERNAME: ${USER_DB_USER}
+      DB_PASSWORD: ${USER_DB_PASSWORD}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME:-access_token}
+      AUTH_REFRESH_COOKIE_NAME: ${AUTH_REFRESH_COOKIE_NAME:-refresh_token}
+      AUTH_COOKIE_SECURE: "true"
+      AUTH_COOKIE_SAME_SITE: Lax
+      AUTH_COOKIE_PATH: /
+      AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN:-.ankitdev.in}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL:-PT15M}
+      JWT_REFRESH_TOKEN_TTL: ${JWT_REFRESH_TOKEN_TTL:-P30D}
+      SERVICE_JWT_ISSUER: ${SERVICE_JWT_ISSUER}
+      SERVICE_JWT_SECRET: ${SERVICE_JWT_SECRET}
+      SERVICE_JWT_TTL: ${SERVICE_JWT_TTL:-PT1M}
+      R2_ENDPOINT: ${R2_ENDPOINT}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME}
+      R2_PUBLIC_BASE_URL: ${R2_PUBLIC_BASE_URL}
+      R2_PUT_URL_TTL: ${R2_PUT_URL_TTL:-PT15M}
+      R2_GET_URL_TTL: ${R2_GET_URL_TTL:-PT5M}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+  backend-1:
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile.chat
+    container_name: the-chat-backend-1
+    restart: unless-stopped
+    environment:
+      <<: *jvm-opts
+      SERVER_PORT: 8081
+      INSTANCE_ID: "1"
+      DB_URL: jdbc:postgresql://postgres:5432/chat_db
+      DB_USERNAME: ${CHAT_DB_USER}
+      DB_PASSWORD: ${CHAT_DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME:-access_token}
+      AUTH_REFRESH_COOKIE_NAME: ${AUTH_REFRESH_COOKIE_NAME:-refresh_token}
+      AUTH_COOKIE_SECURE: "true"
+      AUTH_COOKIE_SAME_SITE: Lax
+      AUTH_COOKIE_PATH: /
+      AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN:-.ankitdev.in}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL:-PT15M}
+      SERVICE_JWT_ISSUER: ${SERVICE_JWT_ISSUER}
+      SERVICE_JWT_SECRET: ${SERVICE_JWT_SECRET}
+      SERVICE_JWT_TTL: ${SERVICE_JWT_TTL:-PT1M}
+      SPRING_FLYWAY_ENABLED: "true"
+      USER_SERVICE_BASE_URL: http://user-service:8084
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+    networks:
+      - internal
+
+  backend-2:
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile.chat
+    container_name: the-chat-backend-2
+    restart: unless-stopped
+    environment:
+      <<: *jvm-opts
+      SERVER_PORT: 8082
+      INSTANCE_ID: "2"
+      DB_URL: jdbc:postgresql://postgres:5432/chat_db
+      DB_USERNAME: ${CHAT_DB_USER}
+      DB_PASSWORD: ${CHAT_DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME:-access_token}
+      AUTH_REFRESH_COOKIE_NAME: ${AUTH_REFRESH_COOKIE_NAME:-refresh_token}
+      AUTH_COOKIE_SECURE: "true"
+      AUTH_COOKIE_SAME_SITE: Lax
+      AUTH_COOKIE_PATH: /
+      AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN:-.ankitdev.in}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL:-PT15M}
+      SERVICE_JWT_ISSUER: ${SERVICE_JWT_ISSUER}
+      SERVICE_JWT_SECRET: ${SERVICE_JWT_SECRET}
+      SERVICE_JWT_TTL: ${SERVICE_JWT_TTL:-PT1M}
+      SPRING_FLYWAY_ENABLED: "false"
+      USER_SERVICE_BASE_URL: http://user-service:8084
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend-1:
+        condition: service_started
+    networks:
+      - internal
+
+  nginx:
+    image: nginx:alpine
+    container_name: the-chat-nginx
+    restart: unless-stopped
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - auth-service
+      - user-service
+      - backend-1
+      - backend-2
+    networks:
+      - internal
+
+volumes:
+  postgres_data:
+
+networks:
+  internal:
+    driver: bridge
