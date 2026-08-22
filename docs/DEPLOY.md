@@ -107,7 +107,9 @@ Critical values:
 |---|---|
 | `JWT_SECRET` / `SERVICE_JWT_SECRET` | Different, each ≥32 chars; same across all services |
 | `AUTH_COOKIE_DOMAIN` | `.ankitdev.in` |
-| `CORS_ALLOWED_ORIGINS` | `https://chat.ankitdev.in` |
+| `CORS_ALLOWED_ORIGINS` | `https://chat.ankitdev.in,http://localhost:3000` (local + deployed FE) |
+| `AUTH_COOKIE_SAME_SITE` | `None` (required for localhost FE → api.ankitdev.in cookies) |
+| `AUTH_COOKIE_SECURE` | `true` |
 | DB / Redis passwords | Strong, unique |
 
 Build JARs (if not using CI yet), then start:
