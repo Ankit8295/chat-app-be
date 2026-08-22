@@ -7,7 +7,8 @@
 Target stack (see also `infra/compose.prod.yml`):
 
 - AWS Lightsail **Bundle:4GB** (dual-stack), Mumbai — ~$23.54/mo
-- Single Postgres (3 DBs) + Redis + auth + user + 2× chat + nginx
+- Single Postgres (3 DBs) + Redis + auth + user + 1× chat + nginx
+  (Redis pub/sub + INSTANCE_ID stay on; add a second chat container later without code changes)
 - Domains: `api.ankitdev.in` (API), `chat.ankitdev.in` (Next.js FE)
 - Cloudflare DNS/TLS/R2 + Vercel FE
 

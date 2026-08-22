@@ -5,13 +5,17 @@
 #   3. Build JARs (CI or locally): ./gradlew :auth:bootJar :user:bootJar :chat:bootJar -x test
 #   4. docker compose -f infra/compose.prod.yml --env-file .env up -d --build
 #
+# Scale-out: run 1 chat instance now (Redis pub/sub + INSTANCE_ID stay enabled).
+# To add a second chat instance later, copy backend-1 as backend-2 (Flyway off),
+# point nginx upstream at both, and optionally enable ip_hash — no app code change.
+#
 # Note: Postgres/Redis ports are NOT published to the host (internal Docker network only).
 
 name: the-chat-prod
 
 x-jvm-opts: &jvm-opts
   JAVA_TOOL_OPTIONS: >-
-    -Xmx256m
+    -Xmx320m
     -XX:+UseSerialGC
     -XX:MaxMetaspaceSize=128m
     -Xss512k
@@ -181,47 +185,6 @@ services:
     networks:
       - internal
 
-  backend-2:
-    build:
-      context: ..
-      dockerfile: infra/docker/Dockerfile.chat
-    container_name: the-chat-backend-2
-    restart: unless-stopped
-    environment:
-      <<: *jvm-opts
-      SERVER_PORT: 8082
-      INSTANCE_ID: "2"
-      DB_URL: jdbc:postgresql://postgres:5432/chat_db
-      DB_USERNAME: ${CHAT_DB_USER}
-      DB_PASSWORD: ${CHAT_DB_PASSWORD}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
-      AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME:-access_token}
-      AUTH_REFRESH_COOKIE_NAME: ${AUTH_REFRESH_COOKIE_NAME:-refresh_token}
-      AUTH_COOKIE_SECURE: "true"
-      AUTH_COOKIE_SAME_SITE: Lax
-      AUTH_COOKIE_PATH: /
-      AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN:-.ankitdev.in}
-      JWT_ISSUER: ${JWT_ISSUER}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL:-PT15M}
-      SERVICE_JWT_ISSUER: ${SERVICE_JWT_ISSUER}
-      SERVICE_JWT_SECRET: ${SERVICE_JWT_SECRET}
-      SERVICE_JWT_TTL: ${SERVICE_JWT_TTL:-PT1M}
-      SPRING_FLYWAY_ENABLED: "false"
-      USER_SERVICE_BASE_URL: http://user-service:8084
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      backend-1:
-        condition: service_started
-    networks:
-      - internal
-
   nginx:
     image: nginx:alpine
     container_name: the-chat-nginx
@@ -236,7 +199,6 @@ services:
       - auth-service
       - user-service
       - backend-1
-      - backend-2
     networks:
       - internal
 
