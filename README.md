@@ -18,10 +18,12 @@ chat-app-be/
 │   ├── postgres/      # Prod multi-DB init script
 │   ├── scripts/       # Backup helpers
 │   ├── compose.yml    # Local orchestration
-│   └── compose.prod.yml
+│   ├── compose.prod.yml
+│   └── compose.home.yml
 ├── docs/
 │   ├── architecture/
-│   └── DEPLOY.md      # Production checklist (AWS / Cloudflare / GitHub)
+│   ├── DEPLOY.md      # AWS Lightsail production
+│   └── LOCAL_SERVER.md # Windows PC + Cloudflare Tunnel
 ├── settings.gradle    # Project includes + projectDir remaps
 ├── build.gradle       # Shared Java 21 / Spring BOM / version for all modules
 └── gradlew.bat
@@ -50,13 +52,22 @@ Or run a single service with Gradle (DBs/Redis must already be up):
 
 API gateway: `http://localhost:8080`
 
-## Production
+## Production (AWS Lightsail)
 
 See **[docs/DEPLOY.md](docs/DEPLOY.md)** for AWS Lightsail + Cloudflare + Vercel steps.
 
 ```bash
 cp .env.production.example .env   # fill secrets on the server only
 docker compose -f infra/compose.prod.yml --env-file .env up -d --build
+```
+
+## Home server (Windows PC)
+
+See **[docs/LOCAL_SERVER.md](docs/LOCAL_SERVER.md)** for running the backend on your Windows PC with Docker Desktop + Cloudflare Tunnel.
+
+```powershell
+copy .env.home.example .env
+.\infra\scripts\start.ps1
 ```
 
 ## Environment
