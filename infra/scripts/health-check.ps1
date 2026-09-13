@@ -34,7 +34,7 @@ try {
 Write-Host "`n=== Internal checks ==="
 Push-Location $RepoRoot
 try {
-    foreach ($pg in @("auth-postgres", "user-postgres", "chat-postgres")) {
+    foreach ($pg in @("auth-postgres", "user-postgres", "chat-postgres", "url-postgres")) {
         docker compose -f $ComposeFile --env-file $EnvFile exec -T $pg pg_isready 2>$null | Out-Null
         if ($LASTEXITCODE -eq 0) { Write-Host "[OK] $pg" } else { Write-Host "[FAIL] $pg"; $ok = $false }
     }

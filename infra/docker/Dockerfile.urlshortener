@@ -1,0 +1,12 @@
+# URL shortener service runtime image.
+# Build first:  .\gradlew.bat :urlshortener:bootJar -x test
+# Then:         docker compose -f infra/compose.yml up --build
+FROM eclipse-temurin:21-jre
+
+WORKDIR /app
+
+COPY services/urlshortener/build/libs/urlshortener-0.0.1-SNAPSHOT.jar app.jar
+
+EXPOSE 8085
+
+ENTRYPOINT ["java", "-jar", "app.jar"]

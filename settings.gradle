@@ -5,6 +5,7 @@ include 'object-storage'
 include 'user'
 include 'auth'
 include 'chat'
+include 'urlshortener'
 
 // Physical layout: deployables under services/, shared libraries under libs/.
 // Gradle project names stay :auth / :user / :chat / :common so existing
@@ -14,3 +15,4 @@ project(':object-storage').projectDir = file('libs/object-storage')
 project(':auth').projectDir = file('services/auth')
 project(':user').projectDir = file('services/user')
 project(':chat').projectDir = file('services/chat')
+project(':urlshortener').projectDir = file('services/urlshortener')

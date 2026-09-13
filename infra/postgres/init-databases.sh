@@ -14,6 +14,10 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     CREATE USER ${CHAT_DB_USER} WITH PASSWORD '${CHAT_DB_PASSWORD}';
     CREATE DATABASE chat_db OWNER ${CHAT_DB_USER};
     GRANT ALL PRIVILEGES ON DATABASE chat_db TO ${CHAT_DB_USER};
+
+    CREATE USER ${URL_DB_USER} WITH PASSWORD '${URL_DB_PASSWORD}';
+    CREATE DATABASE url_db OWNER ${URL_DB_USER};
+    GRANT ALL PRIVILEGES ON DATABASE url_db TO ${URL_DB_USER};
 EOSQL
 
 # Postgres 15+ requires schema privileges on the new DBs for non-superuser owners to run Flyway.
@@ -27,4 +31,8 @@ EOSQL
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "chat_db" <<-EOSQL
     GRANT ALL ON SCHEMA public TO ${CHAT_DB_USER};
+EOSQL
+
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "url_db" <<-EOSQL
+    GRANT ALL ON SCHEMA public TO ${URL_DB_USER};
 EOSQL

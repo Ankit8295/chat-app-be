@@ -2,7 +2,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$File,
 
-    [ValidateSet("auth_db", "user_db", "chat_db")]
+    [ValidateSet("auth_db", "user_db", "chat_db", "url_db")]
     [string]$Database
 )
 
@@ -19,8 +19,9 @@ if (-not $Database) {
     if ($File -match "auth_db") { $Database = "auth_db" }
     elseif ($File -match "user_db") { $Database = "user_db" }
     elseif ($File -match "chat_db") { $Database = "chat_db" }
+    elseif ($File -match "url_db") { $Database = "url_db" }
     else {
-        Write-Error "Could not infer database from filename. Pass -Database auth_db|user_db|chat_db"
+        Write-Error "Could not infer database from filename. Pass -Database auth_db|user_db|chat_db|url_db"
         exit 1
     }
 }
@@ -29,6 +30,7 @@ $serviceMap = @{
     auth_db = @{ Service = "auth-postgres"; UserVar = "AUTH_DB_USER" }
     user_db = @{ Service = "user-postgres"; UserVar = "USER_DB_USER" }
     chat_db = @{ Service = "chat-postgres"; UserVar = "CHAT_DB_USER" }
+    url_db = @{ Service = "url-postgres"; UserVar = "URL_DB_USER" }
 }
 $service = $serviceMap[$Database].Service
 $userVar = $serviceMap[$Database].UserVar

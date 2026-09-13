@@ -10,7 +10,7 @@ if (-not $SkipBuild) {
     Write-Host "Building bootJars..."
     Push-Location $RepoRoot
     try {
-        & .\gradlew.bat :auth:bootJar :user:bootJar :chat:bootJar -x test
+        & .\gradlew.bat :auth:bootJar :user:bootJar :chat:bootJar :urlshortener:bootJar -x test
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     } finally {
         Pop-Location

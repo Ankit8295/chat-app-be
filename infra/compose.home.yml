@@ -1,7 +1,7 @@
 # Home server stack for Windows PC + Cloudflare Tunnel.
 # Usage (from chat-app-be/):
 #   1. copy .env.home.example .env  (fill secrets + CLOUDFLARE_TUNNEL_TOKEN)
-#   2. .\gradlew.bat :auth:bootJar :user:bootJar :chat:bootJar -x test
+#   2. .\gradlew.bat :auth:bootJar :user:bootJar :chat:bootJar :urlshortener:bootJar -x test
 #   3. .\infra\scripts\start.ps1
 #
 # No host ports published — Cloudflare Tunnel reaches nginx:8080 on the internal network.
@@ -70,6 +70,21 @@ services:
       - chat_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${CHAT_DB_USER} -d chat_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  url-postgres:
+    <<: *postgres-opts
+    container_name: the-chat-home-url-postgres
+    environment:
+      POSTGRES_DB: url_db
+      POSTGRES_USER: ${URL_DB_USER}
+      POSTGRES_PASSWORD: ${URL_DB_PASSWORD}
+    volumes:
+      - url_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${URL_DB_USER} -d url_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -166,6 +181,44 @@ services:
     networks:
       - internal
 
+  urlshortener-service:
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile.urlshortener
+    container_name: the-chat-home-urlshortener
+    restart: unless-stopped
+    environment:
+      <<: *jvm-opts
+      SERVER_PORT: 8085
+      DB_URL: jdbc:postgresql://url-postgres:5432/url_db
+      DB_USERNAME: ${URL_DB_USER}
+      DB_PASSWORD: ${URL_DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME:-access_token}
+      AUTH_REFRESH_COOKIE_NAME: ${AUTH_REFRESH_COOKIE_NAME:-refresh_token}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
+      AUTH_COOKIE_SAME_SITE: ${AUTH_COOKIE_SAME_SITE:-None}
+      AUTH_COOKIE_PATH: /
+      AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN:-.ankitdev.in}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL:-PT15M}
+      JWT_REFRESH_TOKEN_TTL: ${JWT_REFRESH_TOKEN_TTL:-P30D}
+      SERVICE_JWT_ISSUER: ${SERVICE_JWT_ISSUER}
+      SERVICE_JWT_SECRET: ${SERVICE_JWT_SECRET}
+      SERVICE_JWT_TTL: ${SERVICE_JWT_TTL:-PT1M}
+      APP_BASE_URL: ${APP_BASE_URL:-https://api.ankitdev.in/s/}
+    depends_on:
+      url-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+
   backend-1:
     build:
       context: ..
@@ -216,6 +269,7 @@ services:
     depends_on:
       - auth-service
       - user-service
+      - urlshortener-service
       - backend-1
     networks:
       - internal
@@ -236,6 +290,7 @@ volumes:
   auth_postgres_data:
   user_postgres_data:
   chat_postgres_data:
+  url_postgres_data:
 
 networks:
   internal:

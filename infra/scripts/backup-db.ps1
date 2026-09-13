@@ -13,7 +13,8 @@ $timestamp = (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ")
 $dbTargets = @(
     @{ Name = "auth_db"; Service = "auth-postgres"; User = "AUTH_DB_USER" },
     @{ Name = "user_db"; Service = "user-postgres"; User = "USER_DB_USER" },
-    @{ Name = "chat_db"; Service = "chat-postgres"; User = "CHAT_DB_USER" }
+    @{ Name = "chat_db"; Service = "chat-postgres"; User = "CHAT_DB_USER" },
+    @{ Name = "url_db"; Service = "url-postgres"; User = "URL_DB_USER" }
 )
 
 foreach ($target in $dbTargets) {

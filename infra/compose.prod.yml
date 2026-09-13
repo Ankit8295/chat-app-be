@@ -2,7 +2,7 @@
 # Usage on the server (from chat-app-be/):
 #   1. Copy .env.production.example -> .env and fill secrets
 #   2. Place Cloudflare Origin certs in infra/nginx/certs/origin.pem + origin.key
-#   3. Build JARs (CI or locally): ./gradlew :auth:bootJar :user:bootJar :chat:bootJar -x test
+#   3. Build JARs (CI or locally): ./gradlew :auth:bootJar :user:bootJar :chat:bootJar :urlshortener:bootJar -x test
 #   4. docker compose -f infra/compose.prod.yml --env-file .env up -d --build
 #
 # Scale-out: run 1 chat instance now (Redis pub/sub + INSTANCE_ID stay enabled).
@@ -35,6 +35,8 @@ services:
       USER_DB_PASSWORD: ${USER_DB_PASSWORD}
       CHAT_DB_USER: ${CHAT_DB_USER}
       CHAT_DB_PASSWORD: ${CHAT_DB_PASSWORD}
+      URL_DB_USER: ${URL_DB_USER}
+      URL_DB_PASSWORD: ${URL_DB_PASSWORD}
     command:
       - postgres
       - -c
@@ -144,6 +146,44 @@ services:
     networks:
       - internal
 
+  urlshortener-service:
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile.urlshortener
+    container_name: the-chat-urlshortener-service
+    restart: unless-stopped
+    environment:
+      <<: *jvm-opts
+      SERVER_PORT: 8085
+      DB_URL: jdbc:postgresql://postgres:5432/url_db
+      DB_USERNAME: ${URL_DB_USER}
+      DB_PASSWORD: ${URL_DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME:-access_token}
+      AUTH_REFRESH_COOKIE_NAME: ${AUTH_REFRESH_COOKIE_NAME:-refresh_token}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
+      AUTH_COOKIE_SAME_SITE: ${AUTH_COOKIE_SAME_SITE:-None}
+      AUTH_COOKIE_PATH: /
+      AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN:-.ankitdev.in}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL:-PT15M}
+      JWT_REFRESH_TOKEN_TTL: ${JWT_REFRESH_TOKEN_TTL:-P30D}
+      SERVICE_JWT_ISSUER: ${SERVICE_JWT_ISSUER}
+      SERVICE_JWT_SECRET: ${SERVICE_JWT_SECRET}
+      SERVICE_JWT_TTL: ${SERVICE_JWT_TTL:-PT1M}
+      APP_BASE_URL: ${APP_BASE_URL:-https://api.ankitdev.in/s/}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+
   backend-1:
     build:
       context: ..
@@ -198,6 +238,7 @@ services:
     depends_on:
       - auth-service
       - user-service
+      - urlshortener-service
       - backend-1
     networks:
       - internal
