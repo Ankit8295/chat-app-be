@@ -5,6 +5,8 @@ import java.util.UUID;
 
 public record SendMessagePayload(
                 UUID conversationId,
-                String content,
+                String ciphertext,
+                String nonce,
+                Integer keyVersion,
                 List<String> attachmentIds) {
 }

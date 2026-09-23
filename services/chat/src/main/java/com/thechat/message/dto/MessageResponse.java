@@ -13,6 +13,9 @@ public record MessageResponse(
         String senderName,
         String senderImage,
         String content,
+        String ciphertext,
+        String nonce,
+        Integer keyVersion,
         Instant createdAt) {
 
     /**
@@ -26,6 +29,9 @@ public record MessageResponse(
                 senderProfile != null ? senderProfile.name() : null,
                 senderProfile != null ? senderProfile.image() : null,
                 message.getContent(),
+                message.getCiphertext(),
+                message.getNonce(),
+                message.getKeyVersion(),
                 message.getCreatedAt());
     }
 }

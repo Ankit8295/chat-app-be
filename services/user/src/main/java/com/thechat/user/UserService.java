@@ -3,6 +3,7 @@ package com.thechat.user;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -20,6 +21,7 @@ import com.thechat.friendship.Friendship;
 import com.thechat.friendship.FriendshipRepository;
 import com.thechat.friendship.FriendshipStatus;
 import com.thechat.friendship.dto.FriendResponse;
+import com.thechat.friendship.dto.FriendshipStatusResponse;
 import com.thechat.object_storage.CloudflareR2Client;
 import com.thechat.user.dto.AvatarConfirmRequest;
 import com.thechat.user.dto.AvatarPresignRequest;
@@ -121,6 +123,13 @@ public class UserService {
 
     @Transactional
     public void ensureFriendship(UUID userId, UUID friendUserId) {
+        if (userId.equals(friendUserId)) {
+            return;
+        }
+        if (isBlockedEitherWay(userId, friendUserId)) {
+            return;
+        }
+
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
         AppUser friend = userRepository.findById(friendUserId)
@@ -132,6 +141,102 @@ public class UserService {
         if (!friendshipRepository.existsByUserIdAndFriendUserId(friendUserId, userId)) {
             friendshipRepository.save(new Friendship(friend, user, FriendshipStatus.ACTIVE));
         }
+    }
+
+    @Transactional
+    public void removeFriend(UUID requesterId, UUID friendUserId) {
+        if (requesterId.equals(friendUserId)) {
+            throw new IllegalArgumentException("Cannot remove yourself as a friend");
+        }
+        friendshipRepository.deleteByUserIdAndFriendUserId(requesterId, friendUserId);
+        friendshipRepository.deleteByUserIdAndFriendUserId(friendUserId, requesterId);
+    }
+
+    @Transactional
+    public void blockUser(UUID requesterId, UUID targetUserId) {
+        if (requesterId.equals(targetUserId)) {
+            throw new IllegalArgumentException("Cannot block yourself");
+        }
+
+        AppUser requester = userRepository.findById(requesterId)
+                .orElseThrow(() -> new UserNotFoundException(requesterId));
+        AppUser target = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new UserNotFoundException(targetUserId));
+
+        Optional<Friendship> outgoing = friendshipRepository
+                .findByUserIdAndFriendUserId(requesterId, targetUserId);
+        Optional<Friendship> incoming = friendshipRepository
+                .findByUserIdAndFriendUserId(targetUserId, requesterId);
+
+        if (outgoing.isPresent()) {
+            Friendship edge = outgoing.get();
+            if (edge.getStatus() != FriendshipStatus.BLOCKED) {
+                edge.setStatus(FriendshipStatus.BLOCKED);
+            }
+        } else {
+            friendshipRepository.save(new Friendship(requester, target, FriendshipStatus.BLOCKED));
+        }
+
+        if (incoming.isPresent() && incoming.get().getStatus() == FriendshipStatus.ACTIVE) {
+            friendshipRepository.deleteByUserIdAndFriendUserId(targetUserId, requesterId);
+        }
+    }
+
+    @Transactional
+    public void unblockUser(UUID requesterId, UUID targetUserId) {
+        if (requesterId.equals(targetUserId)) {
+            throw new IllegalArgumentException("Cannot unblock yourself");
+        }
+
+        Optional<Friendship> outgoing = friendshipRepository
+                .findByUserIdAndFriendUserId(requesterId, targetUserId);
+
+        if (outgoing.isPresent() && outgoing.get().getStatus() == FriendshipStatus.BLOCKED) {
+            friendshipRepository.deleteByUserIdAndFriendUserId(requesterId, targetUserId);
+            return;
+        }
+
+        boolean peerBlockedMe = friendshipRepository.existsByUserIdAndFriendUserIdAndStatus(
+                targetUserId, requesterId, FriendshipStatus.BLOCKED);
+        if (peerBlockedMe) {
+            throw new ForbiddenOperationException("Only the blocker can unblock this relationship");
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public FriendshipStatusResponse getFriendshipStatus(UUID userId, UUID otherUserId) {
+        if (userId.equals(otherUserId)) {
+            return new FriendshipStatusResponse("none", false, false);
+        }
+
+        Optional<Friendship> outgoing = friendshipRepository
+                .findByUserIdAndFriendUserId(userId, otherUserId);
+        Optional<Friendship> incoming = friendshipRepository
+                .findByUserIdAndFriendUserId(otherUserId, userId);
+
+        boolean blockedByMe = outgoing.isPresent()
+                && outgoing.get().getStatus() == FriendshipStatus.BLOCKED;
+        boolean blockedByPeer = incoming.isPresent()
+                && incoming.get().getStatus() == FriendshipStatus.BLOCKED;
+
+        if (blockedByMe || blockedByPeer) {
+            return new FriendshipStatusResponse("blocked", blockedByMe, blockedByPeer);
+        }
+
+        boolean active = outgoing.isPresent() && outgoing.get().getStatus() == FriendshipStatus.ACTIVE
+                && incoming.isPresent() && incoming.get().getStatus() == FriendshipStatus.ACTIVE;
+        if (active) {
+            return new FriendshipStatusResponse("active", false, false);
+        }
+
+        return new FriendshipStatusResponse("none", false, false);
+    }
+
+    private boolean isBlockedEitherWay(UUID userId, UUID otherUserId) {
+        return friendshipRepository.existsByUserIdAndFriendUserIdAndStatus(
+                userId, otherUserId, FriendshipStatus.BLOCKED)
+                || friendshipRepository.existsByUserIdAndFriendUserIdAndStatus(
+                        otherUserId, userId, FriendshipStatus.BLOCKED);
     }
 
     @Transactional
@@ -233,6 +338,29 @@ public class UserService {
 
         deleteReplacedAvatarObjects(userId, previousKey, newKey);
 
+        return toUserResponse(user);
+    }
+
+    @Transactional
+    public UserResponse removeAvatar(UUID userId) {
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+
+        String currentKey = user.getImage();
+        user.setImage(null);
+
+        if (currentKey != null && !currentKey.isBlank()) {
+            String prefix = "profiles/" + userId + "/";
+            if (currentKey.startsWith(prefix)) {
+                deleteObjectBestEffort(currentKey);
+            }
+            List<ProfileImage> images = profileImageRepository.findByUser_IdAndObjectKey(userId, currentKey);
+            if (!images.isEmpty()) {
+                profileImageRepository.deleteAll(images);
+            }
+        }
+
+        profileImageCleanupService.abandonPendingForUser(userId, null);
         return toUserResponse(user);
     }
 

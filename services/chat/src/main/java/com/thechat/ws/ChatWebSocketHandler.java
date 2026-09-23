@@ -12,6 +12,7 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import com.thechat.AppProperties;
+import com.thechat.conversation.ConversationBlockedException;
 import com.thechat.conversation.ConversationNotFoundException;
 import com.thechat.message.MessageService;
 import com.thechat.ws.dto.SendMessagePayload;
@@ -113,9 +114,16 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
 
         try {
-            messageService.acceptAndBroadcast(userId, payload.conversationId(), payload.content());
+            messageService.acceptAndBroadcast(
+                    userId,
+                    payload.conversationId(),
+                    payload.ciphertext(),
+                    payload.nonce(),
+                    payload.keyVersion());
         } catch (IllegalArgumentException ex) {
             sendError(session, "validation_error", ex.getMessage(), payload.conversationId());
+        } catch (ConversationBlockedException ex) {
+            sendError(session, "conversation_blocked", ex.getMessage(), payload.conversationId());
         } catch (ConversationNotFoundException ex) {
             sendError(session, "forbidden", "Not a participant of this conversation", payload.conversationId());
         } catch (RuntimeException ex) {

@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,8 +16,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.thechat.conversation.dto.ConversationDetailResponse;
+import com.thechat.conversation.dto.ConversationKeysResponse;
 import com.thechat.conversation.dto.ConversationResponse;
 import com.thechat.conversation.dto.CreateConversationRequest;
+import com.thechat.conversation.dto.PutConversationKeysRequest;
 import com.thechat.conversation.dto.UpdateGroupConversationRequest;
 
 import jakarta.validation.Valid;
@@ -26,9 +29,13 @@ import jakarta.validation.Valid;
 public class ConversationController {
 
     private final ConversationService conversationService;
+    private final ConversationKeyService conversationKeyService;
 
-    public ConversationController(ConversationService conversationService) {
+    public ConversationController(
+            ConversationService conversationService,
+            ConversationKeyService conversationKeyService) {
         this.conversationService = conversationService;
+        this.conversationKeyService = conversationKeyService;
     }
 
     @GetMapping
@@ -66,5 +73,31 @@ public class ConversationController {
         ConversationResponse conversation = conversationService.updateGroupConversation(
                 currentUserId, conversationId, request);
         return ResponseEntity.ok(conversation);
+    }
+
+    @DeleteMapping("/{conversationId}")
+    public ResponseEntity<Void> deleteConversation(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID conversationId) {
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+        conversationService.hideConversationForUser(conversationId, currentUserId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{conversationId}/keys")
+    public ResponseEntity<ConversationKeysResponse> getConversationKeys(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID conversationId) {
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+        return ResponseEntity.ok(conversationKeyService.getOwn(conversationId, currentUserId));
+    }
+
+    @PutMapping("/{conversationId}/keys")
+    public ResponseEntity<ConversationKeysResponse> putConversationKeys(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID conversationId,
+            @Valid @RequestBody PutConversationKeysRequest request) {
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+        return ResponseEntity.ok(conversationKeyService.putEnvelopes(conversationId, currentUserId, request));
     }
 }

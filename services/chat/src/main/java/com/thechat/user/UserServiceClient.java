@@ -92,6 +92,35 @@ public class UserServiceClient {
         }
     }
 
+    /**
+     * Returns friendship/block status between two users.
+     * @param failClosed when true (send path), treat errors as blocked; when false (detail), treat as none.
+     */
+    public FriendshipStatusResponse getFriendshipStatus(UUID userId, UUID otherUserId, boolean failClosed) {
+        try {
+            FriendshipStatusResponse status = restClient.get()
+                    .uri("/internal/friendships/status?userId={userId}&otherUserId={otherUserId}",
+                            userId, otherUserId)
+                    .retrieve()
+                    .body(FriendshipStatusResponse.class);
+            if (status == null) {
+                return failClosed
+                        ? new FriendshipStatusResponse("blocked", true, true)
+                        : new FriendshipStatusResponse("none", false, false);
+            }
+            return status;
+        } catch (Exception e) {
+            log.error("Failed to fetch friendship status between {} and {}", userId, otherUserId, e);
+            return failClosed
+                    ? new FriendshipStatusResponse("blocked", true, true)
+                    : new FriendshipStatusResponse("none", false, false);
+        }
+    }
+
+    public FriendshipStatusResponse getFriendshipStatus(UUID userId, UUID otherUserId) {
+        return getFriendshipStatus(userId, otherUserId, true);
+    }
+
     record EnsureFriendshipRequest(UUID userId, UUID friendUserId) {
     }
 }

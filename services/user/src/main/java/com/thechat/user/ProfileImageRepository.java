@@ -13,5 +13,7 @@ public interface ProfileImageRepository extends JpaRepository<ProfileImage, UUID
 
     List<ProfileImage> findByUser_IdAndStatus(UUID userId, ProfileImageStatus status);
 
+    List<ProfileImage> findByUser_IdAndObjectKey(UUID userId, String objectKey);
+
     List<ProfileImage> findByStatusAndCreatedAtBefore(ProfileImageStatus status, Instant cutoff);
 }

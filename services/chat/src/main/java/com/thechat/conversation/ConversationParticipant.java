@@ -37,6 +37,9 @@ public class ConversationParticipant {
     @Column(nullable = false, updatable = false)
     private Instant joinedAt;
 
+    @Column(name = "hidden_at")
+    private Instant hiddenAt;
+
     protected ConversationParticipant() {
     }
 
@@ -65,5 +68,13 @@ public class ConversationParticipant {
 
     public Instant getJoinedAt() {
         return joinedAt;
+    }
+
+    public Instant getHiddenAt() {
+        return hiddenAt;
+    }
+
+    public void setHiddenAt(Instant hiddenAt) {
+        this.hiddenAt = hiddenAt;
     }
 }

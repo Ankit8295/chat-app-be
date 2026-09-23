@@ -20,8 +20,10 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
 
         @Query("SELECT DISTINCT c FROM Conversation c " +
                         "JOIN FETCH c.participants p " +
-                        "WHERE c.id IN (SELECT cp.conversation.id FROM ConversationParticipant cp WHERE cp.userId = :userId) "
-                        +
+                        "WHERE c.id IN (" +
+                        "  SELECT cp.conversation.id FROM ConversationParticipant cp " +
+                        "  WHERE cp.userId = :userId AND cp.hiddenAt IS NULL" +
+                        ") " +
                         "ORDER BY c.updatedAt DESC")
         List<Conversation> findAllByUserIdWithParticipants(@Param("userId") UUID userId);
 }

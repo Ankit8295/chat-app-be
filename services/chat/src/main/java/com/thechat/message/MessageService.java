@@ -17,13 +17,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.thechat.AppProperties;
 import com.thechat.conversation.Conversation;
+import com.thechat.conversation.ConversationBlockedException;
 import com.thechat.conversation.ConversationNotFoundException;
 import com.thechat.conversation.ConversationParticipantRepository;
 import com.thechat.conversation.ConversationRepository;
+import com.thechat.conversation.ConversationType;
 import com.thechat.message.dto.MessageCursor;
 import com.thechat.message.dto.MessagePageResponse;
 import com.thechat.message.dto.MessageResponse;
 import com.thechat.realtime.RealtimePublisher;
+import com.thechat.user.FriendshipStatusResponse;
 import com.thechat.user.UserProfile;
 import com.thechat.user.UserServiceClient;
 
@@ -39,7 +42,7 @@ public class MessageService {
 
     private static final int DEFAULT_LIMIT = 50;
     private static final int MAX_LIMIT = 100;
-    private static final int MAX_CONTENT_LENGTH = 4000;
+    private static final int MAX_CIPHERTEXT_LENGTH = 65_536;
 
     private final MessageRepository messageRepository;
     private final ConversationParticipantRepository conversationParticipantRepository;
@@ -130,19 +133,37 @@ public class MessageService {
         return new MessagePageResponse(items, responsePrevCursor, responseNextCursor);
     }
 
-    public MessageResponse acceptAndBroadcast(UUID senderId, UUID conversationId, String rawContent) {
-        String content = normalizeContent(rawContent);
+    public MessageResponse acceptAndBroadcast(
+            UUID senderId,
+            UUID conversationId,
+            String ciphertext,
+            String nonce,
+            Integer keyVersion) {
+        String normalizedCiphertext = requireCiphertext(ciphertext);
+        String normalizedNonce = requireNonce(nonce);
+        int version = requireKeyVersion(keyVersion);
         assertParticipant(conversationId, senderId);
 
-        Conversation conversation = conversationRepository.findById(conversationId)
+        Conversation conversation = conversationRepository.findByIdWithParticipants(conversationId)
                 .orElseThrow(() -> new ConversationNotFoundException(conversationId));
+
+        if (conversation.getType() == ConversationType.DIRECT) {
+            assertNotBlocked(conversation, senderId);
+        }
 
         // Fetch sender profile (1 HTTP call per send — cache-aside optimization comes in Phase 6)
         Map<UUID, UserProfile> profileMap = userServiceClient.batchGetByIds(List.of(senderId));
         UserProfile senderProfile = profileMap.get(senderId);
 
         Instant createdAt = Instant.now();
-        Message message = new Message(UUID.randomUUID(), conversation, senderId, content, createdAt);
+        Message message = new Message(
+                UUID.randomUUID(),
+                conversation,
+                senderId,
+                normalizedCiphertext,
+                normalizedNonce,
+                version,
+                createdAt);
         MessageResponse response = MessageResponse.from(message, senderProfile);
 
         List<UUID> participantIds = conversationParticipantRepository.findUserIdsByConversationId(conversationId);
@@ -165,20 +186,49 @@ public class MessageService {
         return response;
     }
 
-    private String normalizeContent(String rawContent) {
-        if (rawContent == null || rawContent.isBlank()) {
-            throw new IllegalArgumentException("Message content is required");
+    private String requireCiphertext(String ciphertext) {
+        if (ciphertext == null || ciphertext.isBlank()) {
+            throw new IllegalArgumentException("Message ciphertext is required");
         }
-        String content = rawContent.trim();
-        if (content.length() > MAX_CONTENT_LENGTH) {
-            throw new IllegalArgumentException("Message content must be at most " + MAX_CONTENT_LENGTH + " characters");
+        if (ciphertext.length() > MAX_CIPHERTEXT_LENGTH) {
+            throw new IllegalArgumentException(
+                    "Message ciphertext must be at most " + MAX_CIPHERTEXT_LENGTH + " characters");
         }
-        return content;
+        return ciphertext;
+    }
+
+    private String requireNonce(String nonce) {
+        if (nonce == null || nonce.isBlank()) {
+            throw new IllegalArgumentException("Message nonce is required");
+        }
+        return nonce;
+    }
+
+    private int requireKeyVersion(Integer keyVersion) {
+        if (keyVersion == null || keyVersion < 1) {
+            throw new IllegalArgumentException("keyVersion must be at least 1");
+        }
+        return keyVersion;
     }
 
     private void assertParticipant(UUID conversationId, UUID currentUserId) {
         if (!conversationParticipantRepository.existsByConversationIdAndUserId(conversationId, currentUserId)) {
             throw new ConversationNotFoundException(conversationId);
+        }
+    }
+
+    private void assertNotBlocked(Conversation conversation, UUID senderId) {
+        UUID peerId = conversation.getParticipants().stream()
+                .map(com.thechat.conversation.ConversationParticipant::getUserId)
+                .filter(id -> !id.equals(senderId))
+                .findFirst()
+                .orElse(null);
+        if (peerId == null) {
+            return;
+        }
+        FriendshipStatusResponse status = userServiceClient.getFriendshipStatus(senderId, peerId);
+        if ("blocked".equals(status.status())) {
+            throw new ConversationBlockedException();
         }
     }
 

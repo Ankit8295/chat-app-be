@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.thechat.friendship.dto.FriendshipStatusResponse;
 import com.thechat.user.dto.CreateUserProfileRequest;
 import com.thechat.user.dto.EnsureFriendshipRequest;
 
@@ -78,5 +79,12 @@ public class InternalUserController {
     public ResponseEntity<Void> ensureFriendship(@Valid @RequestBody EnsureFriendshipRequest request) {
         userService.ensureFriendship(request.userId(), request.friendUserId());
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/friendships/status")
+    public ResponseEntity<FriendshipStatusResponse> getFriendshipStatus(
+            @RequestParam("userId") UUID userId,
+            @RequestParam("otherUserId") UUID otherUserId) {
+        return ResponseEntity.ok(userService.getFriendshipStatus(userId, otherUserId));
     }
 }

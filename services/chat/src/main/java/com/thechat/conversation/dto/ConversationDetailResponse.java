@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import com.thechat.conversation.Conversation;
 import com.thechat.conversation.ConversationType;
+import com.thechat.user.FriendshipStatusResponse;
 import com.thechat.user.UserProfile;
 
 public record ConversationDetailResponse(
@@ -19,21 +20,27 @@ public record ConversationDetailResponse(
         List<ConversationParticipantResponse> participants,
         UUID createdBy,
         Instant createdAt,
-        Instant updatedAt) {
+        Instant updatedAt,
+        String blockStatus) {
 
-    /**
-     * @param profileMap userId → UserProfile fetched from User service via batch
-     *                   call
-     */
     public static ConversationDetailResponse from(
             Conversation conversation,
             UUID currentUserId,
             Map<UUID, UserProfile> profileMap) {
+        return from(conversation, currentUserId, profileMap, null);
+    }
+
+    public static ConversationDetailResponse from(
+            Conversation conversation,
+            UUID currentUserId,
+            Map<UUID, UserProfile> profileMap,
+            FriendshipStatusResponse friendshipStatus) {
 
         String derivedName = conversation.getName();
         String derivedImage = null;
         ConversationParticipantResponse friend = null;
         List<ConversationParticipantResponse> participants = List.of();
+        String blockStatus = "none";
 
         if (conversation.getType() == ConversationType.DIRECT) {
             var other = conversation.getParticipants().stream()
@@ -46,6 +53,14 @@ public record ConversationDetailResponse(
                 derivedName = otherProfile != null ? otherProfile.name() : null;
                 derivedImage = otherProfile != null ? otherProfile.image() : null;
                 friend = ConversationParticipantResponse.from(other, otherProfile);
+            }
+
+            if (friendshipStatus != null && "blocked".equals(friendshipStatus.status())) {
+                if (friendshipStatus.blockedByMe()) {
+                    blockStatus = "blocked_by_me";
+                } else if (friendshipStatus.blockedByPeer()) {
+                    blockStatus = "blocked_by_peer";
+                }
             }
         } else {
             derivedImage = conversation.getImage();
@@ -64,6 +79,7 @@ public record ConversationDetailResponse(
                 participants,
                 conversation.getCreatedBy(),
                 conversation.getCreatedAt(),
-                conversation.getUpdatedAt());
+                conversation.getUpdatedAt(),
+                blockStatus);
     }
 }

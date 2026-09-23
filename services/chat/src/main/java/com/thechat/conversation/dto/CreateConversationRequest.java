@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import com.thechat.conversation.ConversationType;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
 @ValidCreateConversation
@@ -14,5 +15,7 @@ public record CreateConversationRequest(
                 String name,
                 String about,
                 String image,
-                List<UUID> participants) {
+                List<UUID> participants,
+                Integer keyVersion,
+                @Valid List<KeyEnvelopeRequest> envelopes) {
 }

@@ -17,6 +17,7 @@ import jakarta.persistence.Table;
 /**
  * Phase 3: stores senderId as a plain UUID — no JPA foreign key to app_users.
  * Sender name/image are fetched via UserServiceClient when building responses.
+ * New rows store ciphertext only; content remains for legacy plaintext.
  */
 @Entity
 @Table(name = "messages")
@@ -32,8 +33,17 @@ public class Message {
     @Column(name = "sender_id", nullable = false)
     private UUID senderId;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String content;
+
+    @Column(columnDefinition = "TEXT")
+    private String ciphertext;
+
+    @Column(columnDefinition = "TEXT")
+    private String nonce;
+
+    @Column(name = "key_version")
+    private Integer keyVersion;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -41,11 +51,20 @@ public class Message {
     protected Message() {
     }
 
-    public Message(UUID id, Conversation conversation, UUID senderId, String content, Instant createdAt) {
+    public Message(
+            UUID id,
+            Conversation conversation,
+            UUID senderId,
+            String ciphertext,
+            String nonce,
+            Integer keyVersion,
+            Instant createdAt) {
         this.id = id;
         this.conversation = conversation;
         this.senderId = senderId;
-        this.content = content;
+        this.ciphertext = ciphertext;
+        this.nonce = nonce;
+        this.keyVersion = keyVersion;
         this.createdAt = createdAt;
     }
 
@@ -73,6 +92,18 @@ public class Message {
 
     public String getContent() {
         return content;
+    }
+
+    public String getCiphertext() {
+        return ciphertext;
+    }
+
+    public String getNonce() {
+        return nonce;
+    }
+
+    public Integer getKeyVersion() {
+        return keyVersion;
     }
 
     public Instant getCreatedAt() {

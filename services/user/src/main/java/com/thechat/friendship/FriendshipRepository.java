@@ -18,6 +18,11 @@ public interface FriendshipRepository extends JpaRepository<Friendship, UUID> {
 
     boolean existsByUserIdAndFriendUserId(UUID userId, UUID friendUserId);
 
+    boolean existsByUserIdAndFriendUserIdAndStatus(
+            UUID userId, UUID friendUserId, FriendshipStatus status);
+
+    void deleteByUserIdAndFriendUserId(UUID userId, UUID friendUserId);
+
     @Query(value = "SELECT f FROM Friendship f JOIN FETCH f.friendUser WHERE f.user.id = :userId AND f.status = :status",
            countQuery = "SELECT COUNT(f) FROM Friendship f WHERE f.user.id = :userId AND f.status = :status")
     Page<Friendship> findAllFriendsWithUserByUserIdAndStatus(

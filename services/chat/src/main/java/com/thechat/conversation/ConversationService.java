@@ -1,5 +1,6 @@
 package com.thechat.conversation;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -22,6 +23,7 @@ import com.thechat.conversation.dto.ConversationResponse;
 import com.thechat.conversation.dto.CreateConversationRequest;
 import com.thechat.conversation.dto.UpdateGroupConversationRequest;
 import com.thechat.realtime.RealtimePublisher;
+import com.thechat.user.FriendshipStatusResponse;
 import com.thechat.user.UserProfile;
 import com.thechat.user.UserServiceClient;
 
@@ -38,16 +40,22 @@ public class ConversationService {
     private static final Logger log = LoggerFactory.getLogger(ConversationService.class);
 
     private final ConversationRepository conversationRepository;
+    private final ConversationParticipantRepository conversationParticipantRepository;
     private final UserServiceClient userServiceClient;
     private final RealtimePublisher realtimePublisher;
+    private final ConversationKeyService conversationKeyService;
 
     public ConversationService(
             ConversationRepository conversationRepository,
+            ConversationParticipantRepository conversationParticipantRepository,
             UserServiceClient userServiceClient,
-            RealtimePublisher realtimePublisher) {
+            RealtimePublisher realtimePublisher,
+            ConversationKeyService conversationKeyService) {
         this.conversationRepository = conversationRepository;
+        this.conversationParticipantRepository = conversationParticipantRepository;
         this.userServiceClient = userServiceClient;
         this.realtimePublisher = realtimePublisher;
+        this.conversationKeyService = conversationKeyService;
     }
 
     @Transactional(readOnly = true)
@@ -84,13 +92,25 @@ public class ConversationService {
                 .toList();
         Map<UUID, UserProfile> profileMap = userServiceClient.batchGetByIds(participantIds);
 
-        return ConversationDetailResponse.from(conversation, currentUserId, profileMap);
+        FriendshipStatusResponse friendshipStatus = null;
+        if (conversation.getType() == ConversationType.DIRECT) {
+            UUID peerId = conversation.getParticipants().stream()
+                    .map(ConversationParticipant::getUserId)
+                    .filter(id -> !id.equals(currentUserId))
+                    .findFirst()
+                    .orElse(null);
+            if (peerId != null) {
+                friendshipStatus = userServiceClient.getFriendshipStatus(currentUserId, peerId, false);
+            }
+        }
+
+        return ConversationDetailResponse.from(conversation, currentUserId, profileMap, friendshipStatus);
     }
 
     @Transactional
     public ConversationResponse createConversation(UUID currentUserId, CreateConversationRequest request) {
         return switch (request.type()) {
-            case DIRECT -> createDirectConversation(currentUserId, request.userId());
+            case DIRECT -> createDirectConversation(currentUserId, request);
             case GROUP -> createGroupConversation(currentUserId, request);
         };
     }
@@ -146,6 +166,14 @@ public class ConversationService {
         return conversationResponse;
     }
 
+    @Transactional
+    public void hideConversationForUser(UUID conversationId, UUID currentUserId) {
+        ConversationParticipant participant = conversationParticipantRepository
+                .findByConversationIdAndUserId(conversationId, currentUserId)
+                .orElseThrow(() -> new ConversationNotFoundException(conversationId));
+        participant.setHiddenAt(Instant.now());
+    }
+
     private void publishGroupUpdateBestEffort(
             UUID conversationId,
             List<UUID> participantIds,
@@ -157,7 +185,8 @@ public class ConversationService {
         }
     }
 
-    private ConversationResponse createDirectConversation(UUID currentUserId, UUID targetUserId) {
+    private ConversationResponse createDirectConversation(UUID currentUserId, CreateConversationRequest request) {
+        UUID targetUserId = request.userId();
         if (currentUserId.equals(targetUserId)) {
             throw new IllegalArgumentException("Cannot create a conversation with yourself");
         }
@@ -171,6 +200,7 @@ public class ConversationService {
 
         String directKey = generateDirectKey(currentUserId, targetUserId);
         Conversation conversation = conversationRepository.findByDirectKey(directKey).orElse(null);
+        boolean createdNew = false;
 
         if (conversation == null) {
             try {
@@ -179,16 +209,26 @@ public class ConversationService {
                 newConversation.addParticipant(new ConversationParticipant(newConversation, currentUserId));
                 newConversation.addParticipant(new ConversationParticipant(newConversation, targetUserId));
                 conversation = conversationRepository.save(newConversation);
+                createdNew = true;
             } catch (DataIntegrityViolationException e) {
                 conversation = conversationRepository.findByDirectKey(directKey).orElseThrow(() -> e);
             }
         }
+
+        conversationParticipantRepository.clearHiddenAtForUser(conversation.getId(), currentUserId);
 
         userServiceClient.ensureFriendship(currentUserId, targetUserId);
 
         conversation = conversationRepository
                 .findByIdWithParticipants(conversation.getId())
                 .orElse(conversation);
+
+        Set<UUID> participantIds = Set.of(currentUserId, targetUserId);
+        if (createdNew) {
+            conversationKeyService.saveRequired(conversation.getId(), participantIds, request);
+        } else {
+            conversationKeyService.saveIfMissing(conversation.getId(), participantIds, request);
+        }
 
         return ConversationResponse.from(conversation, currentUserId, profileMap);
     }
@@ -228,6 +268,8 @@ public class ConversationService {
         conversation = conversationRepository
                 .findByIdWithParticipants(conversation.getId())
                 .orElse(conversation);
+
+        conversationKeyService.saveRequired(conversation.getId(), allIds, request);
 
         return ConversationResponse.from(conversation, currentUserId, profileMap);
     }
